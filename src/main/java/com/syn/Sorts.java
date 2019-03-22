@@ -9,6 +9,9 @@ package com.syn;
  **/
 public class Sorts {
 
+    //测试用的数据
+    public static int[] data={999,0,111,5,3,7,6,8,8,7,6,5,6,7,8,109,209,87,5,32,4,5,5,3,2,5,7,7,5,3,23,45,67,654,34,567,6,543,5,67,6543,45,67,654};
+
     private static void swap(int[] arr,int i,int j){
         int tmp=arr[i];
         arr[i]=arr[j];
