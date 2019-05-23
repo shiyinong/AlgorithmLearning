@@ -1,15 +1,17 @@
-package com.syn;
+package com.syn.Algorithm;
+
+
+import java.util.List;
 
 /**
  * @author shiyinong
  * @version 1.0
  * @ClassName Sorts
- * @Description ¼¸ÖÖ¾­µäµÄÅÅĞòËã·¨
+ * @Description
  * @Date 2019/3/15 13:32
  **/
 public class Sorts {
 
-    //²âÊÔÓÃµÄÊı¾İ
     public static int[] data={999,0,111,5,3,7,6,8,8,7,6,5,6,7,8,109,209,87,5,32,4,5,5,3,2,5,7,7,5,3,23,45,67,654,34,567,6,543,5,67,6543,45,67,654};
 
     private static void swap(int[] arr,int i,int j){
@@ -17,26 +19,25 @@ public class Sorts {
         arr[i]=arr[j];
         arr[j]=tmp;
     }
-    /**
-     * ¹é²¢ÅÅĞò
-     * @param arr ÊäÈëÊı¾İ
-     */
+
+    private static<E> void swap(List<E> list,int i,int j){
+        E tmp=list.get(i);
+        list.set(i,list.get(j));
+        list.set(j,tmp);
+    }
+
     public static void mergeSort(int[] arr){
-        /**
-         * ¹é²¢ÅÅĞòÊ±¼ä¸´ÔÓ¶È£ºn*logn£»¿Õ¼ä¸´ÔÓ¶È£ºn
-         * ¼òµ¥ÍÆµ¼£º
-         * »­Í¼¿ÉÖª£¬Ò»¹²ÓĞlogn²ã£¬Ã¿Ò»²ãµÄÊ±¼ä¸´ÔÓ¶È¶¼ÊÇn£¬ËùÒÔ×ÜµÄÊ±¼ä¸´ÔÓ¶È¾ÍÊÇn*logn
-         */
+
         mergeSortHelper(arr,0,arr.length-1);
     }
 
-    /**
-     * ¹é²¢ÅÅĞòhelper
-     * @param arr ÊäÈëÊı×é
-     * @param left ´ıÅÅĞòÊı×éµÄ×ó±ß½ç ×ó±ÕÓÒ±ÕÇø¼ä
-     * @param right ´ıÅÅĞòÊı×éµÄÓÒ±ß½ç ×ó±ÕÓÒ±ÕÇø¼ä
-     */
+
     private static void mergeSortHelper(int[] arr,int left,int right) {
+        /**
+         * å½’å¹¶æ’åºæ—¶é—´å¤æ‚åº¦ï¼šn*lognï¼›ç©ºé—´å¤æ‚åº¦ï¼šn
+         * ç®€å•æ¨å¯¼ï¼š
+         * ç”»å›¾å¯çŸ¥ï¼Œä¸€å…±æœ‰lognå±‚ï¼Œæ¯ä¸€å±‚çš„æ—¶é—´å¤æ‚åº¦éƒ½æ˜¯nï¼Œæ‰€ä»¥æ€»çš„æ—¶é—´å¤æ‚åº¦å°±æ˜¯n*logn
+         */
         if (left >= right) return;
         int mid = (left + right) / 2;
         mergeSortHelper(arr, left, mid);
@@ -53,32 +54,23 @@ public class Sorts {
                 tmp[idx] = arr[j++];
             }
         }
-        for (int i = left; i <= right; i++) {
-            arr[i] = tmp[i - left];
-        }
+//        for (int i = left; i <= right; i++) {
+//            arr[i] = tmp[i - left];
+//        }
+        System.arraycopy(tmp,0,arr,left,right-left+1);
     }
 
-    /**
-     * ¿ìËÙÅÅĞò
-     * @param arr ÊäÈëÊı×é
-     */
     public static void quickSort(int[] arr){
         /**
-         * ¿ìËÙÅÅĞòÊ±¼ä¸´ÔÓ¶ÈºÍ¹é²¢Ò»Ñù£¬²»ÔÙ·ÖÎö
-         * ¿Õ¼ä¸´ÔÓ¶È£¬¿ìÅÅÆäÊµ²¢Ã»ÓĞÊ¹ÓÃ¶îÍâµÄ¿Õ¼ä£¬ÕæÕıÏûºÄ¿Õ¼äµÄÊÇµİ¹éµ÷ÓÃ£¬ËùÒÔ¿Õ¼ä¸´ÔÓ¶ÈÊÇlognµÄ
+         * å¿«é€Ÿæ’åºæ—¶é—´å¤æ‚åº¦å’Œå½’å¹¶ä¸€æ ·ï¼Œä¸å†åˆ†æ
+         * ç©ºé—´å¤æ‚åº¦ï¼Œå¿«æ’å…¶å®å¹¶æ²¡æœ‰ä½¿ç”¨é¢å¤–çš„ç©ºé—´ï¼ŒçœŸæ­£æ¶ˆè€—ç©ºé—´çš„æ˜¯é€’å½’è°ƒç”¨ï¼Œæ‰€ä»¥ç©ºé—´å¤æ‚åº¦æ˜¯lognçš„
          */
         quickSortHelper(arr,0,arr.length-1);
     }
 
-    /**
-     * ¿ìËÙÅÅĞòhelper
-     * @param arr ÊäÈëÊı×é
-     * @param left ´ıÅÅĞò×ÓÊı×éµÄ×ó±ß½ç ×ó±ÕÓÒ±Õ
-     * @param right ´ıÅÅĞò×ÓÊı×éµÄÓÒ±ß½ç ×ó±ÕÓÒ±Õ
-     */
     private static void quickSortHelper(int[] arr,int left,int right) {
         if (left >= right) return;
-        int base = arr[left]; //»ù×¼
+        int base = arr[left];
         int i = left, j = right;
         while (i < j) {
             while (j > i && arr[j] > base) {
@@ -95,38 +87,27 @@ public class Sorts {
         quickSortHelper(arr, i + 1, right);
     }
 
-    /**
-     * ¶ÑÅÅĞò
-     * @param arr ÊäÈëÊı×é
-     */
     public static void heapSort(int[] arr) {
         /**
-         * ¶ÑÅÅĞò£¬Ê×ÏÈÒªÁË½âÔõÑùÓÃÒ»Î»Êı×é´æ´¢ÍêÈ«¶ş²æÊ÷
-         * 1.¶ÔÓÚÈÎÒâ½ÚµãË÷Òıi£¬ËüµÄ¸¸½ÚµãË÷ÒıÎª(i-1)/2£¬0³ıÍâ
-         * 2.¶ÔÓÚÈÎÒâÓĞº¢×ÓµÄ½Úµãi£¬ËüµÄ×óº¢×ÓË÷ÒıÎª2*i+1£¬ÓÒº¢×ÓË÷ÒıÎª2*i+2
-         * Ê±¼ä¸´ÔÓ¶ÈÎªn*logn£¬¿Õ¼ä¸´ÔÓ¶ÈÎª³£Êı
+         * å †æ’åºï¼Œé¦–å…ˆè¦äº†è§£æ€æ ·ç”¨ä¸€ä½æ•°ç»„å­˜å‚¨å®Œå…¨äºŒå‰æ ‘
+         * 1.å¯¹äºä»»æ„èŠ‚ç‚¹ç´¢å¼•iï¼Œå®ƒçš„çˆ¶èŠ‚ç‚¹ç´¢å¼•ä¸º(i-1)/2ï¼Œ0é™¤å¤–
+         * 2.å¯¹äºä»»æ„æœ‰å­©å­çš„èŠ‚ç‚¹iï¼Œå®ƒçš„å·¦å­©å­ç´¢å¼•ä¸º2*i+1ï¼Œå³å­©å­ç´¢å¼•ä¸º2*i+2
+         * æ—¶é—´å¤æ‚åº¦ä¸ºn*lognï¼Œç©ºé—´å¤æ‚åº¦ä¸ºå¸¸æ•°
          */
-        //³õÊ¼»¯´ó¶¥¶Ñ
         int len = arr.length;
         for (int i = len / 2 - 1; i >= 0; i--) {
             adjustHeap(arr, i, len);
         }
-        //¿ªÊ¼´Ó´ó¶¥¶ÑÖĞÈ¡ÔªËØ
         while (--len >= 0) {
-            swap(arr, 0, len); //È¡³öÔªËØ
-            adjustHeap(arr, 0, len); //ĞŞ¸´´ó¶¥¶Ñ
+            swap(arr, 0, len);
+            adjustHeap(arr, 0, len);
         }
     }
 
-    /**
-     * ĞŞ¸´´ó¶¥¶Ñ
-     * @param arr ÊäÈëÊı×é
-     * @param idx ÒªĞŞ¸´µÄ½ÚµãË÷Òı
-     */
     private static void adjustHeap(int[] arr,int idx,int len) {
         for (int i = idx; i < len / 2; ) {
-            int left = 2 * i + 1; //×óº¢×Ó½ÚµãË÷Òı
-            int right = 2 * i + 2; //ÓÒº¢×Ó½ÚµãË÷Òı
+            int left = 2 * i + 1;
+            int right = 2 * i + 2;
             if (arr[i] >= arr[left] && (right >= len || arr[i] >= arr[right])) return;
             if (right < len && arr[left] < arr[right]) {
                 swap(arr, i, right);
@@ -138,10 +119,7 @@ public class Sorts {
         }
     }
 
-    /**
-     * ²åÈëÅÅĞò
-     * @param arr ÊäÈëÊı×é
-     */
+
     public static void insertSort(int[] arr) {
         int len = arr.length;
         for (int i = 0; i < len; i++) {
@@ -152,10 +130,6 @@ public class Sorts {
         }
     }
 
-    /**
-     * Ñ¡ÔñÅÅĞò
-     * @param arr ÊäÈëÊı×é
-     */
     public static void selectSort(int[] arr) {
         int len = arr.length;
         for (int i = 0; i < len; i++) {
@@ -168,9 +142,11 @@ public class Sorts {
     }
 
     /**
-     * Ã°ÅİÅÅĞò
-     * @param arr ÊäÈëÊı×é
-     */
+     * @description TODO
+     * @date 8:53 2019/3/29
+     * @param arr
+     * @return void
+    **/
     public static void popSort(int[] arr) {
         int len = arr.length;
         for (int i = len - 1; i >= 0; i--) {
@@ -182,5 +158,33 @@ public class Sorts {
         }
     }
 
+    public static void insertEleToHead(List<Integer> heap, int ele) {
+        heap.add(ele);
+        int len = heap.size();
+        for (int i = len - 1; i >= 0; ) {
+            int par = (i - 1) / 2;
+            if (par < 0 || heap.get(par) >= heap.get(i)) break;
+            swap(heap, par, i);
+            i = par;
+        }
+    }
+
+    public static void deleteEleToHeap(List<Integer> heap, int idx) {
+        int len = heap.size() - 1;
+        swap(heap, idx, len);
+        heap.remove(len);
+        for (int i = idx; i <= (len - 2) / 2; ) {
+            int leftChild = 2 * i + 1;
+            int rightChild = leftChild + 1;
+            if (heap.get(i) >= heap.get(leftChild) && (rightChild >= len || heap.get(i) >= heap.get(rightChild))) break;
+            if (rightChild >= len || heap.get(leftChild) >= heap.get(rightChild)) {
+                swap(heap, i, leftChild);
+                i = leftChild;
+            } else {
+                swap(heap, i, rightChild);
+                i = rightChild;
+            }
+        }
+    }
 }
 

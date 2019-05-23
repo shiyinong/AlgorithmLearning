@@ -1,4 +1,4 @@
-package com.syn;
+package com.syn.Algorithm;
 
 import java.util.*;
 
@@ -6,12 +6,12 @@ import java.util.*;
  * @author shiyinong
  * @version 1.0
  * @ClassName PathPlanning
- * @Description Â·¾¶¹æ»®µÄ¾­µäËã·¨
+ * @Description
  * @Date 2019/3/18 10:35
  **/
 public class PathPlanning {
 
-    //Ã¿Ìõ±ßµÄ¸ñÊ½£ºint[] path={from,to,cost} Æğµã£¬ÖÕµã£¬³É±¾
+    //int[] path={from,to,cost}
     public static List<int[]> data = new ArrayList<>();
     static {
         data.add(new int[]{0,1,100});
@@ -24,23 +24,15 @@ public class PathPlanning {
         data.add(new int[]{4,5,30});
     }
 
-    /**
-     * ±´¶ûÂü¸£ÌØËã·¨
-     * @param edges ÊäÈëÂ·¾¶
-     * @param from  Æğµã
-     * @param to ÖÕµã
-     * @param n ½ÚµãµÄÊıÁ¿
-     * @return ×îĞ¡³É±¾
-     */
     public static int bellmanFord(List<int[]> edges,int from,int to,int n) {
         /**
-         * Ê±¼ä¸´ÔÓ¶È£ºm*n£¬¿Õ¼ä¸´ÔÓ¶È£ºn¡£mÎªÍ¼µÄ±ßÊı£¬nÎª½ÚµãµÄÊıÁ¿¡£
-         * ±´¶ûÂü¸£ÌØËã·¨ÊÇÒ»ÖÖ¶¯Ì¬¹æ»®Ëã·¨£¬´úÂë±È½Ï¼òµ¥£¬¶øÇÒ»¹¿ÉÒÔÉèÖÃÂ·¾¶×î¶àÖ»ÄÜk´ÎÖĞ×ª¡£
-         * Ïà±ÈµÏ½ÜË¹ÌØÀ­£¬×î´óµÄÓÅÊÆÊÇÖ§³Ö¸ºÈ¨ÖØ
+         * æ—¶é—´å¤æ‚åº¦ï¼šm*nï¼Œç©ºé—´å¤æ‚åº¦ï¼šnã€‚mä¸ºå›¾çš„è¾¹æ•°ï¼Œnä¸ºèŠ‚ç‚¹çš„æ•°é‡ã€‚
+         * è´å°”æ›¼ç¦ç‰¹ç®—æ³•æ˜¯ä¸€ç§åŠ¨æ€è§„åˆ’ç®—æ³•ï¼Œä»£ç æ¯”è¾ƒç®€å•ï¼Œè€Œä¸”è¿˜å¯ä»¥è®¾ç½®è·¯å¾„æœ€å¤šåªèƒ½kæ¬¡ä¸­è½¬ã€‚
+         * ç›¸æ¯”è¿ªæ°æ–¯ç‰¹æ‹‰ï¼Œæœ€å¤§çš„ä¼˜åŠ¿æ˜¯æ”¯æŒè´Ÿæƒé‡
          *
-         * ÔÚ²»´æÔÚ¸º»·Â·µÄÇé¿öÏÂ£¬nÌõ±ß×î¶àÑ­»·n-1´Î¾Í¿ÉÒÔÕÒµ½fromµãµ½ËùÓĞµãµÄ×îĞ¡³É±¾¡£
-         * Èô´æÔÚ¸º»·Â·£¬ÔòÎŞ·¨Çó³ö×îĞ¡³É±¾£¬µ«ÊÇ¸ÃËã·¨¿ÉÒÔ¼ì²â³öÍ¼ÊÇ·ñ´æÔÚ¸º»·Â·£¬¼´Ñ­»·Íên-1´ÎÖ®ºó£¬
-         * ÔÙÑ­»·Ò»´Î£¬ÈôÈÔÓĞ½ÚµãµÄ×îĞ¡³É±¾±äĞ¡£¬ÔòÒ»¶¨´æÔÚ¸º»·Â·¡£
+         * åœ¨ä¸å­˜åœ¨è´Ÿç¯è·¯çš„æƒ…å†µä¸‹ï¼Œnæ¡è¾¹æœ€å¤šå¾ªç¯n-1æ¬¡å°±å¯ä»¥æ‰¾åˆ°fromç‚¹åˆ°æ‰€æœ‰ç‚¹çš„æœ€å°æˆæœ¬ã€‚
+         * è‹¥å­˜åœ¨è´Ÿç¯è·¯ï¼Œåˆ™æ— æ³•æ±‚å‡ºæœ€å°æˆæœ¬ï¼Œä½†æ˜¯è¯¥ç®—æ³•å¯ä»¥æ£€æµ‹å‡ºå›¾æ˜¯å¦å­˜åœ¨è´Ÿç¯è·¯ï¼Œå³å¾ªç¯å®Œn-1æ¬¡ä¹‹åï¼Œ
+         * å†å¾ªç¯ä¸€æ¬¡ï¼Œè‹¥ä»æœ‰èŠ‚ç‚¹çš„æœ€å°æˆæœ¬å˜å°ï¼Œåˆ™ä¸€å®šå­˜åœ¨è´Ÿç¯è·¯ã€‚
          */
         int[] arr = new int[n];
         for (int i = 0; i < n; i++) {
@@ -58,17 +50,10 @@ public class PathPlanning {
         return arr[to];
     }
 
-    /**
-     * µÏ½ÜË¹ÌØÀ­Ëã·¨
-     * @param edges ÊäÈëÂ·¾¶
-     * @param from Æğµã
-     * @param to ÖÕµã
-     * @return ×îĞ¡³É±¾
-     */
     public static int Dijkstra(List<int[]> edges,int from,int to,int n) {
         /**
-         * Ê±¼ä¸´ÔÓ¶Èn*logm£¬¿Õ¼ä¸´ÔÓ¶Èn¡£nÊÇµãÊı£¬mÊÇ±ßÊı
-         * ²»Ö§³Ö¸ºÈ¨ÖØ
+         * æ—¶é—´å¤æ‚åº¦n*logmï¼Œç©ºé—´å¤æ‚åº¦nã€‚næ˜¯ç‚¹æ•°ï¼Œmæ˜¯è¾¹æ•°
+         * ä¸æ”¯æŒè´Ÿæƒé‡
          */
         int[] arr = new int[n];
         for (int i = 0; i < n; i++) {
@@ -76,13 +61,16 @@ public class PathPlanning {
         }
         arr[from] = 0;
         Map<Integer, List<int[]>> mp = new HashMap<>(); //key:from; value: to cost
-        //½¨Í¼
+        for(Map.Entry entry : mp.entrySet()){
+
+        }
+
         for (int[] edge : edges) {
             List<int[]> val = mp.getOrDefault(edge[0], new ArrayList<int[]>());
             val.add(new int[]{edge[1], edge[2]});
             mp.put(edge[0], val);
         }
-        //³õÊ¼»¯ÓÅÏÈ¼¶¶ÓÁĞ
+
         PriorityQueue<int[]> pq = new PriorityQueue<>(new Comparator<int[]>() {
             @Override
             public int compare(int[] o1, int[] o2) {
@@ -93,7 +81,7 @@ public class PathPlanning {
         Set<Integer> visited = new HashSet<>();
         while (!pq.isEmpty()) {
             int[] tmp = pq.poll(); //to cost
-            if (visited.contains(tmp[0])) continue; //Èç¹û¸Ã½ÚµãÒÑ¾­·ÃÎÊ¹ıÁË
+            if (visited.contains(tmp[0])) continue;
             visited.add(tmp[0]);
             if(!mp.containsKey(tmp[0])) continue;
             for (int[] edge : mp.get(tmp[0])) { //to cost
@@ -102,6 +90,7 @@ public class PathPlanning {
             }
         }
         return arr[to];
+
     }
 
 }
