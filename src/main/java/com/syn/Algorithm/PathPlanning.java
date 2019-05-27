@@ -61,9 +61,6 @@ public class PathPlanning {
         }
         arr[from] = 0;
         Map<Integer, List<int[]>> mp = new HashMap<>(); //key:from; value: to cost
-        for(Map.Entry entry : mp.entrySet()){
-
-        }
 
         for (int[] edge : edges) {
             List<int[]> val = mp.getOrDefault(edge[0], new ArrayList<int[]>());
