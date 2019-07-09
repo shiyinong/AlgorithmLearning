@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.syn.learning.frame.mybatis.mapper.FatherMapper">
+
+    <resultMap id="father" type="Father">
+        <id property="fid" column="fid"/>
+        <result property="name" column="fname"/>
+        <result property="age" column="fage"/>
+        <collection property="children" javaType="list" ofType="child">
+            <id property="cid" column="cid"/>
+            <result property="name" column="cname"/>
+            <result property="age" column="cage"/>
+        </collection>
+    </resultMap>
+
+    <select id="selectAll" resultType="Father" resultMap="father">
+        select f.fid,f.name fname,f.age fage,c.cid,c.age cage,c.name cname
+        from father_t f
+        left join child_t c
+        on f.fid=c.c_fid
+    </select>
+</mapper>

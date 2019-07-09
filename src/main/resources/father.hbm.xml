@@ -1,0 +1,18 @@
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class name="com.syn.learning.frame.hibernate.Father" table="father_t">
+        <id name="fid">
+            <generator class="identity"/>
+        </id>
+        <property name="age"/>
+        <property name="name"/>
+
+        <!--配置关联信息-->
+        <set name="children" cascade="save-update">
+            <key column="c_fid"/>
+            <one-to-many class="com.syn.learning.frame.hibernate.Child"/>
+        </set>
+    </class>
+</hibernate-mapping>

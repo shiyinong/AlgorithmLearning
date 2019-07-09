@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.syn.learning.frame.mybatis.mapper.UserMapper">
+
+    <resultMap id="user" type="com.syn.learning.frame.mybatis.User">
+        <result column="age" property="uage"/>
+    </resultMap>
+
+    <select id="select" parameterType="int" resultType="User" resultMap="user">
+        select * from user_t where uid = #{uid}
+    </select>
+
+    <select id="selectAll" parameterType="string" resultType="User" resultMap="user">
+        select * from user_t where name like '%${value}%' order by uid desc
+    </select>
+
+    <insert id="insert" parameterType="com.syn.learning.frame.mybatis.User" >
+        insert into user_t values (#{uid},#{uage},#{name},#{password})
+    </insert>
+
+</mapper>
