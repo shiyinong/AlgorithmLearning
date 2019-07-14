@@ -175,29 +175,29 @@ public class LineTranslation {
         int len = lines.length;
         StringBuilder wkt = new StringBuilder("LINESTRING(");
         // 添加第一条线段的第一个端点
-        wkt.append(lines[0][0][0]);
-        wkt.append(" ");
-        wkt.append(lines[0][0][1]);
-        wkt.append(" ");
-        wkt.append(lines[0][0][2]);
-        wkt.append(",");
+        wkt.append(lines[0][0][0])
+                .append(" ")
+                .append(lines[0][0][1])
+                .append(" ")
+                .append(lines[0][0][2])
+                .append(",");
         for (int i = 0; i < len - 1; i++) {
             double[] p1 = lines[i][1];
             double[] p2 = lines[i + 1][0];
-            wkt.append((p1[0] + p2[0]) / 2);
-            wkt.append(" ");
-            wkt.append((p1[1] + p2[1]) / 2);
-            wkt.append(" ");
-            wkt.append((p1[2] + p2[2]) / 2);
-            wkt.append(",");
+            wkt.append((p1[0] + p2[0]) / 2)
+                    .append(" ")
+                    .append((p1[1] + p2[1]) / 2)
+                    .append(" ")
+                    .append((p1[2] + p2[2]) / 2)
+                    .append(",");
         }
         // 添加最右一条线段的第二个端点
-        wkt.append(lines[len - 1][1][0]);
-        wkt.append(" ");
-        wkt.append(lines[len - 1][1][1]);
-        wkt.append(" ");
-        wkt.append(lines[len - 1][1][2]);
-        wkt.append(",");
+        wkt.append(lines[len - 1][1][0])
+                .append(" ")
+                .append(lines[len - 1][1][1])
+                .append(" ")
+                .append(lines[len - 1][1][2])
+                .append(",");
         wkt.setCharAt(wkt.length() - 1, ')');
         return wkt.toString();
     }
