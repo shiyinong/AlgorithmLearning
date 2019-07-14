@@ -13,18 +13,6 @@ import java.util.*;
 
 public class TreeAlgorithm {
 
-    public static void main(String[] args){
-
-        TreeNode tn1=new TreeNode(1);
-        TreeNode tn2=new TreeNode(2);
-        TreeNode tn3=new TreeNode(3);
-        tn1.left=tn2;
-        tn1.right=tn3;
-        postorderTraversal(tn1);
-
-    }
-
-
     /**
      * @description 二叉树的中序遍历，迭代版
      * @date 16:36 2019/3/30

@@ -22,7 +22,17 @@ public class MainTest {
     }
 
     public static void main(String[] args) {
-        System.out.println("1000003".compareTo("111"));
+        List<List<String>> people = new ArrayList<>();
+        List<String> l1 = new ArrayList<>();
+        l1.add("java");
+        List<String> l2 = new ArrayList<>();
+        l2.add("nodejs");
+        List<String> l3 = new ArrayList<>();
+        l3.add("nodejs");
+        l3.add("reactjs");
+        people.add(l1);
+        people.add(l2);
+        people.add(l3);
     }
 
 }

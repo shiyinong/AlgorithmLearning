@@ -1,24 +1,18 @@
-package com.syn.learning.splitword;
+package com.syn.learning.work.splitword;
 
 import com.hankcs.hanlp.HanLP;
-import com.hankcs.hanlp.model.perceptron.PerceptronLexicalAnalyzer;
 import com.hankcs.hanlp.seg.Segment;
-import com.hankcs.hanlp.tokenizer.NLPTokenizer;
-import com.hankcs.hanlp.tokenizer.SpeedTokenizer;
 import org.ansj.domain.Result;
 import org.ansj.domain.Term;
 import org.ansj.splitWord.analysis.ToAnalysis;
 import org.apdplat.word.WordSegmenter;
-import org.apdplat.word.segmentation.SegmentationAlgorithm;
 import org.apdplat.word.segmentation.Word;
-import org.hibernate.id.SelectGenerator;
 import org.junit.Before;
 import org.junit.Test;
 import org.wltea.analyzer.core.IKSegmenter;
 import org.wltea.analyzer.core.Lexeme;
 
 import java.io.*;
-import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,16 +28,7 @@ public class SplitWordDemo {
     private List<String> texts = new ArrayList<>();
 
     private static Segment segment;
-    private static PerceptronLexicalAnalyzer per;
     static {
-        try {
-            per=new PerceptronLexicalAnalyzer("D:/java_project/hanlp/data-for-1.7.4/data/model/perceptron/pku199801/cws.bin",
-                    HanLP.Config.PerceptronPOSModelPath,
-                    HanLP.Config.PerceptronNERModelPath);
-            per.enablePlaceRecognize(true).enableOrganizationRecognize(true);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
         segment = HanLP.newSegment()
                 .enablePlaceRecognize(true)
                 .enableOrganizationRecognize(true)
@@ -60,11 +45,9 @@ public class SplitWordDemo {
 //        System.out.println(terms);
         int i=0;
         for (String str : texts) {
-            List<com.hankcs.hanlp.seg.common.Term> seg = segment.seg(str);
-            System.out.println(seg.get(0).nature.toString());
             System.out.println(segment.seg(str));
             //System.out.println("===   "+per.seg(str));
-            if(i++==10) break;
+            if(i++==10000) break;
         }
         System.out.println(System.currentTimeMillis() - l);
     }
