@@ -1,6 +1,9 @@
 package com.syn.learning.javase.multithread;
 
 import java.util.concurrent.*;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.IntConsumer;
 
 /**
  * @author shiyinong

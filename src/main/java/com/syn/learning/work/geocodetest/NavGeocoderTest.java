@@ -8,8 +8,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * @author shiyinong
@@ -27,10 +25,15 @@ public class NavGeocoderTest {
      */
     public static GeocodeResult navGeocoderTest(GeocodeAddress geocodeAddress) throws IOException {
         BufferedReader br = null;
-        String url = "http://192.168.4.104:5290/geoscode?address="
-                + URLEncoder.encode(geocodeAddress.getName(), "utf-8")
-                + "&citycode="
-                + geocodeAddress.getCityCode();
+        String url;
+        if (geocodeAddress.getCityCode() != null) {
+            url = "http://localhost:5290/geocode?address="
+                    + URLEncoder.encode(geocodeAddress.getName(), "utf-8")
+                    + "&countycode=" + URLEncoder.encode(geocodeAddress.getCityCode().toString(), "utf-8");
+        } else {
+            url = "http://localhost:5290/geocode?address="
+                    + URLEncoder.encode(geocodeAddress.getName(), "utf-8");
+        }
         URL readUrl = new URL(url);
         HttpURLConnection connection = (HttpURLConnection) readUrl.openConnection();
         connection.connect();
@@ -50,9 +53,10 @@ public class NavGeocoderTest {
                     + address.getString("address");
             double lon = address.getDouble("longitude");
             double lat = address.getDouble("latitude");
-            geocodeResult = new GeocodeResult(res, lon, lat);
+            int confidence = address.getInteger("confidence");
+            geocodeResult = new GeocodeResult(res, lon, lat, confidence);
         } else {
-            geocodeResult = new GeocodeResult("", 0d, 0d);
+            geocodeResult = new GeocodeResult("", 0d, 0d, 0);
         }
         return geocodeResult;
     }

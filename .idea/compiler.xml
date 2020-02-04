@@ -7,7 +7,18 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="javalearning" />
+        <module name="s-demo" />
+        <module name="s3-demo" />
+        <module name="springmvc-demo" />
+        <module name="springmvc-demo2" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="kafka-demo" target="1.8" />
+      <module name="servlet-demo" target="1.8" />
+      <module name="servletdemo" target="1.8" />
+      <module name="springmvcdemo" target="1.8" />
+      <module name="test" target="1.8" />
+    </bytecodeTargetLevel>
   </component>
 </project>

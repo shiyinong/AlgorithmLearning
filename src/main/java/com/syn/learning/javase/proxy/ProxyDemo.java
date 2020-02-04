@@ -20,13 +20,12 @@ public class ProxyDemo {
         Student student = new StudentImpl();
         Student studentProxy = (Student) Proxy.newProxyInstance(student.getClass().getClassLoader(),
                 student.getClass().getInterfaces(),
-                (proxy, method, args) -> {
+                (Object proxy, Method method, Object[] args) -> {
                     System.out.println("准备文具");
                     method.invoke(student, args);
                     System.out.println("检查一遍");
                     return null;
                 });
         studentProxy.work();
-        student.work();
     }
 }

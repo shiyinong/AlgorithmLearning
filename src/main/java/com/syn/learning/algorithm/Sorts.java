@@ -11,27 +11,27 @@ import java.util.List;
  **/
 public class Sorts {
 
-    public static int[] data={999,0,111,5,3,7,6,8,8,7,6,5,6,7,8,109,209,87,5,32,4,5,5,3,2,5,7,7,5,3,23,45,67,654,34,567,6,543,5,67,6543,45,67,654};
+    public static int[] data = {999, 0, 111, 5, 3, 7, 6, 8, 8, 7, 6, 5, 6, 7, 8, 109, 209, 87, 5, 32, 4, 5, 5, 3, 2, 5, 7, 7, 5, 3, 23, 45, 67, 654, 34, 567, 6, 543, 5, 67, 6543, 45, 67, 654};
 
-    private static void swap(int[] arr,int i,int j){
-        int tmp=arr[i];
-        arr[i]=arr[j];
-        arr[j]=tmp;
+    private static void swap(int[] arr, int i, int j) {
+        int tmp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = tmp;
     }
 
-    private static<E> void swap(List<E> list,int i,int j){
-        E tmp=list.get(i);
-        list.set(i,list.get(j));
-        list.set(j,tmp);
+    private static <E> void swap(List<E> list, int i, int j) {
+        E tmp = list.get(i);
+        list.set(i, list.get(j));
+        list.set(j, tmp);
     }
 
-    public static void mergeSort(int[] arr){
+    public static void mergeSort(int[] arr) {
 
-        mergeSortHelper(arr,0,arr.length-1);
+        mergeSortHelper(arr, 0, arr.length - 1);
     }
 
 
-    private static void mergeSortHelper(int[] arr,int left,int right) {
+    private static void mergeSortHelper(int[] arr, int left, int right) {
         /**
          * 归并排序时间复杂度：n*logn；空间复杂度：n
          * 简单推导：
@@ -56,18 +56,18 @@ public class Sorts {
 //        for (int i = left; i <= right; i++) {
 //            arr[i] = tmp[i - left];
 //        }
-        System.arraycopy(tmp,0,arr,left,right-left+1);
+        System.arraycopy(tmp, 0, arr, left, right - left + 1);
     }
 
-    public static void quickSort(int[] arr){
+    public static void quickSort(int[] arr) {
         /**
          * 快速排序时间复杂度和归并一样，不再分析
          * 空间复杂度，快排其实并没有使用额外的空间，真正消耗空间的是递归调用，所以空间复杂度是logn的
          */
-        quickSortHelper(arr,0,arr.length-1);
+        quickSortHelper(arr, 0, arr.length - 1);
     }
 
-    private static void quickSortHelper(int[] arr,int left,int right) {
+    private static void quickSortHelper(int[] arr, int left, int right) {
         if (left >= right) return;
         int base = arr[left];
         int i = left, j = right;
@@ -103,7 +103,7 @@ public class Sorts {
         }
     }
 
-    private static void adjustHeap(int[] arr,int idx,int len) {
+    private static void adjustHeap(int[] arr, int idx, int len) {
         for (int i = idx; i < len / 2; ) {
             int left = 2 * i + 1;
             int right = 2 * i + 2;
@@ -140,12 +140,6 @@ public class Sorts {
         }
     }
 
-    /**
-     * @description TODO
-     * @date 8:53 2019/3/29
-     * @param arr
-     * @return void
-    **/
     public static void popSort(int[] arr) {
         int len = arr.length;
         for (int i = len - 1; i >= 0; i--) {
@@ -173,15 +167,15 @@ public class Sorts {
         swap(heap, idx, len);
         heap.remove(len);
         for (int i = idx; i <= (len - 2) / 2; ) {
-            int leftChild = 2 * i + 1;
-            int rightChild = leftChild + 1;
-            if (heap.get(i) >= heap.get(leftChild) && (rightChild >= len || heap.get(i) >= heap.get(rightChild))) break;
-            if (rightChild >= len || heap.get(leftChild) >= heap.get(rightChild)) {
-                swap(heap, i, leftChild);
-                i = leftChild;
+            int left = 2 * i + 1;
+            int right = left + 1;
+            if (heap.get(i) >= heap.get(left) && (right >= len || heap.get(i) >= heap.get(right))) break;
+            if (right >= len || heap.get(left) >= heap.get(right)) {
+                swap(heap, i, left);
+                i = left;
             } else {
-                swap(heap, i, rightChild);
-                i = rightChild;
+                swap(heap, i, right);
+                i = right;
             }
         }
     }

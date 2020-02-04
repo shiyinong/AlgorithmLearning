@@ -1,18 +1,8 @@
 package com.syn.learning.algorithm.Tree;
 
-
-
-import sun.security.krb5.internal.crypto.KeyUsage;
-
 import java.util.*;
 
-/**
- * @author shiyinong
- * @version 1.0
- * @ClassName TreeNode
- * @Description TODO
- * @Date 2019/3/30 16:21
- **/
+
 public class TreeNode {
     public int val;
     public TreeNode left;
@@ -33,9 +23,6 @@ public class TreeNode {
         t3.right=t6;
         t4.right=t5;
     }
-
-
-
 }
 
 

@@ -152,9 +152,9 @@ public class LineTranslation {
     private static double[] translation(double[] a, double[] b, double dis, int side) {
         double[] vab = new double[]{b[0] - a[0], b[1] - a[1]};
         if (Math.abs(vab[0]) <= MIN_DIS) {
-            return new double[]{a[0] + (vab[1] > 0 ? 1 : -1) * side * dis, a[1]};
+            return new double[]{a[0] + (vab[1] > 0 ? 1 : -1) * side * dis, a[1], a[2]};
         } else if (Math.abs(vab[1]) <= MIN_DIS) {
-            return new double[]{a[0], a[1] + (vab[0] > 0 ? -1 : 1) * side * dis};
+            return new double[]{a[0], a[1] + (vab[0] > 0 ? -1 : 1) * side * dis, a[2]};
         } else {
             double k = -1 / (vab[1] / vab[0]);
             // 求x时，要通过side以及b点所处的象限，来判断x正负

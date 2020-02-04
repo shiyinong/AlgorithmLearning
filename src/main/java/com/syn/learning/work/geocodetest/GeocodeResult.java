@@ -9,14 +9,16 @@ public class GeocodeResult {
     private String name;
     private Double longitude;
     private Double latitude;
+    private Integer confidence;
 
     public GeocodeResult() {
     }
 
-    public GeocodeResult(String name, Double longitude, Double latitude) {
+    public GeocodeResult(String name, Double longitude, Double latitude, Integer confidence) {
         this.name = name;
         this.longitude = longitude;
         this.latitude = latitude;
+        this.confidence = confidence;
     }
 
     public String getName() {
@@ -43,12 +45,21 @@ public class GeocodeResult {
         this.latitude = latitude;
     }
 
+    public Integer getConfidence() {
+        return confidence;
+    }
+
+    public void setConfidence(Integer confidence) {
+        this.confidence = confidence;
+    }
+
     @Override
     public String toString() {
         return "GeocodeResult{" +
                 "name='" + name + '\'' +
                 ", longitude=" + longitude +
                 ", latitude=" + latitude +
+                ", confidence=" + confidence +
                 '}';
     }
 }

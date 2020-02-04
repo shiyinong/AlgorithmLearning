@@ -7,7 +7,7 @@ package com.syn.learning.work.geocodetest;
  **/
 public class GeocodeAddress {
     private String name;
-    private int cityCode;
+    private Integer cityCode;
 
     public String getName() {
         return name;
@@ -17,11 +17,11 @@ public class GeocodeAddress {
         this.name = name;
     }
 
-    public int getCityCode() {
+    public Integer getCityCode() {
         return cityCode;
     }
 
-    public void setCityCode(int cityCode) {
+    public void setCityCode(Integer cityCode) {
         this.cityCode = cityCode;
     }
 }
