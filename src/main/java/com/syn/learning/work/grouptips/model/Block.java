@@ -13,10 +13,10 @@ public class Block {
     private Integer col;
     private Integer tipsCount;
     private Geometry geometry;
-    private Double[] lbPoint; //左下角坐标
-    private Double[] ltPoint; //左上角坐标
-    private Double[] rbPoint; //右下角坐标
-    private Double[] rtPoint; //右上角坐标
+    private double[] lbPoint; //左下角坐标
+    private double[] ltPoint; //左上角坐标
+    private double[] rbPoint; //右下角坐标
+    private double[] rtPoint; //右上角坐标
 
     public Block() {
         this.tipsCount = 0;
@@ -66,35 +66,35 @@ public class Block {
         this.geometry = geometry;
     }
 
-    public Double[] getLbPoint() {
+    public double[] getLbPoint() {
         return lbPoint;
     }
 
-    public void setLbPoint(Double[] lbPoint) {
+    public void setLbPoint(double[] lbPoint) {
         this.lbPoint = lbPoint;
     }
 
-    public Double[] getLtPoint() {
+    public double[] getLtPoint() {
         return ltPoint;
     }
 
-    public void setLtPoint(Double[] ltPoint) {
+    public void setLtPoint(double[] ltPoint) {
         this.ltPoint = ltPoint;
     }
 
-    public Double[] getRbPoint() {
+    public double[] getRbPoint() {
         return rbPoint;
     }
 
-    public void setRbPoint(Double[] rbPoint) {
+    public void setRbPoint(double[] rbPoint) {
         this.rbPoint = rbPoint;
     }
 
-    public Double[] getRtPoint() {
+    public double[] getRtPoint() {
         return rtPoint;
     }
 
-    public void setRtPoint(Double[] rtPoint) {
+    public void setRtPoint(double[] rtPoint) {
         this.rtPoint = rtPoint;
     }
 

@@ -13,8 +13,8 @@ public class Edge {
      * 2.对于竖边：a在下，b在上
      * 这个顺序必须保证
      */
-    private Double[] a;
-    private Double[] b;
+    private double[] a;
+    private double[] b;
     /**
      * 该边是一个横边还是竖边
      */
@@ -28,19 +28,19 @@ public class Edge {
         this.id = id;
     }
 
-    public Double[] getA() {
+    public double[] getA() {
         return a;
     }
 
-    public void setA(Double[] a) {
+    public void setA(double[] a) {
         this.a = a;
     }
 
-    public Double[] getB() {
+    public double[] getB() {
         return b;
     }
 
-    public void setB(Double[] b) {
+    public void setB(double[] b) {
         this.b = b;
     }
 
@@ -52,7 +52,7 @@ public class Edge {
         this.vertical = vertical;
     }
 
-    public Edge(int id, Double[] a, Double[] b, Boolean vertical) {
+    public Edge(int id, double[] a, double[] b, Boolean vertical) {
         this.id = id;
         this.a = a;
         this.b = b;
@@ -71,10 +71,10 @@ public class Edge {
     public boolean equals(Object obj) {
         if (obj instanceof Edge) {
             Edge edge = (Edge) obj;
-            return edge.a[0].equals(this.a[0])
-                    && edge.a[1].equals(this.a[1])
-                    && edge.b[0].equals(this.b[0])
-                    && edge.b[1].equals(this.b[1]);
+            return edge.a[0] == this.a[0]
+                    && edge.a[1] == this.a[1]
+                    && edge.b[0] == this.b[0]
+                    && edge.b[1] == this.b[1];
         }
         return false;
     }

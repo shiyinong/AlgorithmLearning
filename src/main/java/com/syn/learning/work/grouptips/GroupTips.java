@@ -26,7 +26,7 @@ public class GroupTips {
     private static GeometryFactory factory = new GeometryFactory();
     private static WKTWriter wktWriter = new WKTWriter();
     private static Polygon borderPolygon;
-    private static List<Double[]> adminBorder = new ArrayList<>();
+    private static List<double[]> adminBorder = new ArrayList<double[]>();
     private static List<Tip> tips = new ArrayList<>();
     /**
      * 生成的网格，n*m大小，每个元素存4个值，分别是该网格的左下角坐标和右上角坐标
@@ -74,7 +74,7 @@ public class GroupTips {
             String[] ps = line.substring(10, line.length() - 2).split(",");
             for (String p : ps) {
                 String[] ss = p.split(" ");
-                adminBorder.add(new Double[]{Double.parseDouble(ss[0]), Double.parseDouble(ss[1])});
+                adminBorder.add(new double[]{Double.parseDouble(ss[0]), Double.parseDouble(ss[1])});
             }
         }
     }
@@ -118,10 +118,10 @@ public class GroupTips {
                 block.setId(i * cols + j);
                 block.setRow(i);
                 block.setCol(j);
-                block.setLbPoint(new Double[]{lb[0] + j * dx, lb[1] + i * dy});
-                block.setLtPoint(new Double[]{lb[0] + j * dx, lb[1] + (i + 1) * dy});
-                block.setRbPoint(new Double[]{lb[0] + (j + 1) * dx, lb[1] + i * dy});
-                block.setRtPoint(new Double[]{lb[0] + (j + 1) * dx, lb[1] + (i + 1) * dy});
+                block.setLbPoint(new double[]{lb[0] + j * dx, lb[1] + i * dy});
+                block.setLtPoint(new double[]{lb[0] + j * dx, lb[1] + (i + 1) * dy});
+                block.setRbPoint(new double[]{lb[0] + (j + 1) * dx, lb[1] + i * dy});
+                block.setRtPoint(new double[]{lb[0] + (j + 1) * dx, lb[1] + (i + 1) * dy});
                 block.setTipsCount(0);
                 blocks[i][j] = block;
             }
@@ -137,7 +137,7 @@ public class GroupTips {
         下上左右四个范围，分别是：纬度最低、纬度最高、经度最小、经度最大
          */
         double[] corners = new double[]{91, -1, 181, -1};
-        for (Double[] point : adminBorder) {
+        for (double[] point : adminBorder) {
             corners[0] = Math.min(corners[0], point[1]);
             corners[1] = Math.max(corners[1], point[1]);
             corners[2] = Math.min(corners[2], point[0]);
@@ -319,7 +319,7 @@ public class GroupTips {
             edges.put(edge3, edges.getOrDefault(edge3, 0) + 1);
             edges.put(edge4, edges.getOrDefault(edge4, 0) + 1);
         }
-        Double[] curPoint;
+        double[] curPoint;
         Edge curEdge = null;
         // 所有只出现了一次的edge，就是最终多边形的envelope的一部分。现在要做的就是将这些边组成一个多边形。
         for (Map.Entry<Edge, Integer> entry : edges.entrySet()) {
@@ -336,7 +336,7 @@ public class GroupTips {
                 }
             }
         }
-        List<Double[]> polygonPoints = new ArrayList<>();
+        List<double[]> polygonPoints = new ArrayList<>();
         Set<Integer> visited = new HashSet<>();
         assert curEdge != null;
         visited.add(curEdge.getId());
@@ -349,8 +349,8 @@ public class GroupTips {
             if (visited.contains(nextEdge.getId())) { //说明已经多边形已经闭合了
                 break;
             }
-            Double[] nextPoint = (nextEdge.getA()[0].equals(curPoint[0])
-                    && nextEdge.getA()[1].equals(curPoint[1])) ?
+            double[] nextPoint = (nextEdge.getA()[0] == curPoint[0]
+                    && nextEdge.getA()[1] == curPoint[1]) ?
                     nextEdge.getB() :
                     nextEdge.getA();
             //这里判断下当前edge和下一条edge是否是平行的
@@ -365,7 +365,7 @@ public class GroupTips {
         return getPolygonFromPoints(polygonPoints).intersection(borderPolygon);
     }
 
-    private static Polygon getPolygonFromPoints(List<Double[]> points) {
+    private static Polygon getPolygonFromPoints(List<double[]> points) {
         Coordinate[] coordinates = new Coordinate[points.size() + 1];
         for (int i = 0; i < points.size(); i++) {
             coordinates[i] = getCoordinate(points.get(i));
@@ -373,7 +373,6 @@ public class GroupTips {
         coordinates[points.size()] = coordinates[0];
         return factory.createPolygon(coordinates);
     }
-
 
     private static Coordinate[] getCoordinates(Block block) {
         Coordinate[] coordinates = new Coordinate[5];
@@ -385,7 +384,7 @@ public class GroupTips {
         return coordinates;
     }
 
-    private static Coordinate getCoordinate(Double[] point) {
+    private static Coordinate getCoordinate(double[] point) {
         return new Coordinate(point[0], point[1]);
     }
 
