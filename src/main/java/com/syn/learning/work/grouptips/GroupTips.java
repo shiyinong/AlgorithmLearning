@@ -1,6 +1,10 @@
 package com.syn.learning.work.grouptips;
 
 
+import com.syn.learning.work.grouptips.model.Block;
+import com.syn.learning.work.grouptips.model.Edge;
+import com.syn.learning.work.grouptips.model.GroupBlock;
+import com.syn.learning.work.grouptips.model.Tip;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -19,35 +23,10 @@ import java.util.*;
  * @date 2020/2/20 10:24
  **/
 public class GroupTips {
-
-    private static class Tip {
-        int id;
-        double[] point;
-    }
-
-    private static class Block {
-        int id;
-        // 四个值，分别是左下角坐标和右上角坐标
-        double[] range;
-        int tipsCount;
-        //在网格中的行、列数。寻找四邻域时用到了
-        int row;
-        int col;
-        // 如果该属性为null，说明该block没有落在该订单圈内。
-        Geometry geometry;
-    }
-
-    private static class GroupBlock {
-        int id;
-        List<Block> blocks = new ArrayList<>();
-        int tipsCount;
-        Geometry geometry;
-    }
-
     private static GeometryFactory factory = new GeometryFactory();
     private static WKTWriter wktWriter = new WKTWriter();
     private static Polygon borderPolygon;
-    private static List<double[]> adminBorder = new ArrayList<>();
+    private static List<Double[]> adminBorder = new ArrayList<>();
     private static List<Tip> tips = new ArrayList<>();
     /**
      * 生成的网格，n*m大小，每个元素存4个值，分别是该网格的左下角坐标和右上角坐标
@@ -58,7 +37,7 @@ public class GroupTips {
     private static int emptyThreshold;
     private static final double BLOCK_SIZE = 0.002;
     private static final int MAX_TIPS_SIZE = 1800;
-    private static final int MIN_TIPS_SIZE = 1000;
+    private static final int MIN_TIPS_SIZE = 800;
 
     private static int calCount = 0;
 
@@ -95,18 +74,13 @@ public class GroupTips {
             String[] ps = line.substring(10, line.length() - 2).split(",");
             for (String p : ps) {
                 String[] ss = p.split(" ");
-                adminBorder.add(new double[]{Double.parseDouble(ss[0]), Double.parseDouble(ss[1])});
+                adminBorder.add(new Double[]{Double.parseDouble(ss[0]), Double.parseDouble(ss[1])});
             }
         }
     }
 
     private static void createBorderPolygon() {
-        Coordinate[] coordinates = new Coordinate[adminBorder.size() + 1];
-        for (int i = 0; i < adminBorder.size(); i++) {
-            coordinates[i] = new Coordinate(adminBorder.get(i)[0], adminBorder.get(i)[1]);
-        }
-        coordinates[adminBorder.size()] = new Coordinate(adminBorder.get(0)[0], adminBorder.get(0)[1]);
-        borderPolygon = factory.createPolygon(coordinates);
+        borderPolygon = getPolygonFromPoints(adminBorder);
     }
 
     private static void loadTips(String path) throws Exception {
@@ -116,8 +90,9 @@ public class GroupTips {
             String[] ss = line.split("\t");
             String[] p = ss[2].substring(6, ss[2].length() - 1).split(" ");
             Tip tip = new Tip();
-            tip.id = Integer.parseInt(ss[0]);
-            tip.point = new double[]{Double.parseDouble(p[0]), Double.parseDouble(p[1])};
+            tip.setId(Integer.parseInt(ss[0]));
+            tip.setLon(Double.parseDouble(p[0]));
+            tip.setLat(Double.parseDouble(p[1]));
             tips.add(tip);
         }
     }
@@ -136,18 +111,18 @@ public class GroupTips {
         double dy = height / rows;
         blocks = new Block[rows][cols];
         // 左下角网格，经纬度均最小
-        double[] lb = new double[]{corner[2], corner[0], corner[3] + dx, corner[1] + dy};
+        double[] lb = new double[]{corner[2], corner[0]};
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 Block block = new Block();
-                block.id = i * cols + j;
-                block.row = i;
-                block.col = j;
-                block.range = new double[]{
-                        lb[0] + j * dx,
-                        lb[1] + i * dy,
-                        lb[0] + (j + 1) * dx,
-                        lb[1] + (i + 1) * dy};
+                block.setId(i * cols + j);
+                block.setRow(i);
+                block.setCol(j);
+                block.setLbPoint(new Double[]{lb[0] + j * dx, lb[1] + i * dy});
+                block.setLtPoint(new Double[]{lb[0] + j * dx, lb[1] + (i + 1) * dy});
+                block.setRbPoint(new Double[]{lb[0] + (j + 1) * dx, lb[1] + i * dy});
+                block.setRtPoint(new Double[]{lb[0] + (j + 1) * dx, lb[1] + (i + 1) * dy});
+                block.setTipsCount(0);
                 blocks[i][j] = block;
             }
         }
@@ -162,7 +137,7 @@ public class GroupTips {
         下上左右四个范围，分别是：纬度最低、纬度最高、经度最小、经度最大
          */
         double[] corners = new double[]{91, -1, 181, -1};
-        for (double[] point : adminBorder) {
+        for (Double[] point : adminBorder) {
             corners[0] = Math.min(corners[0], point[1]);
             corners[1] = Math.max(corners[1], point[1]);
             corners[2] = Math.min(corners[2], point[0]);
@@ -178,11 +153,12 @@ public class GroupTips {
             int left = 0, right = blocks.length;
             while (left <= right) {
                 int mid = left + (right - left) / 2;
-                double[] range = blocks[mid][0].range;
-                if (range[1] <= tip.point[1] && range[3] >= tip.point[1]) {
+                Block midBlock = blocks[mid][0];
+                if (midBlock.getLbPoint()[1] <= tip.getLat()
+                        && midBlock.getLtPoint()[1] >= tip.getLat()) {
                     row = mid;
                     break;
-                } else if (range[1] > tip.point[1]) {
+                } else if (midBlock.getLbPoint()[1] > tip.getLat()) {
                     right = mid - 1;
                 } else {
                     left = mid + 1;
@@ -193,18 +169,19 @@ public class GroupTips {
             right = blocks[0].length;
             while (left <= right) {
                 int mid = left + (right - left) / 2;
-                double[] range = blocks[0][mid].range;
-                if (range[0] <= tip.point[0] && range[2] >= tip.point[0]) {
+                Block midBlock = blocks[0][mid];
+                if (midBlock.getLbPoint()[0] <= tip.getLon()
+                        && midBlock.getRbPoint()[0] >= tip.getLon()) {
                     col = mid;
                     break;
-                } else if (range[0] > tip.point[0]) {
+                } else if (midBlock.getLbPoint()[0] > tip.getLon()) {
                     right = mid - 1;
                 } else {
                     left = mid + 1;
                 }
             }
             if (row >= 0 && col >= 0) {
-                blocks[row][col].tipsCount++;
+                blocks[row][col].addTipsCount(1);
             }
         }
     }
@@ -213,7 +190,7 @@ public class GroupTips {
         int allEmpty = 0;
         for (Block[] row : blocks) {
             for (Block block : row) {
-                allEmpty += block.tipsCount == 0 ? 1 : 0;
+                allEmpty += block.getTipsCount() == 0 ? 1 : 0;
             }
         }
         // 这是一个平均值、近似值，肯定不是最终生成的group个数
@@ -225,9 +202,9 @@ public class GroupTips {
         Set<Integer> visited = new HashSet<>();
         // 经度小的在前；经度相等，纬度小的在前
         PriorityQueue<Block> pq = new PriorityQueue<>((o1, o2) ->
-                (o1.col == o2.col ?
-                        Integer.compare(o1.row, o2.row) :
-                        Integer.compare(o1.col, o2.col)));
+                (o1.getCol().equals(o2.getCol()) ?
+                        Integer.compare(o1.getRow(), o2.getRow()) :
+                        Integer.compare(o1.getCol(), o2.getCol())));
         int id = 0;
         for (Block[] rows : blocks) {
             Collections.addAll(pq, rows);
@@ -238,18 +215,19 @@ public class GroupTips {
 //        int[][] ds = new int[][]{{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
         while (!pq.isEmpty()) {
             while (!pq.isEmpty()
-                    && (visited.contains(pq.peek().id) || pq.peek().geometry == null)) {
+                    && (visited.contains(pq.peek().getId()) || pq.peek().getGeometry() == null)) {
                 pq.poll();
             }
             if (!pq.isEmpty()) {
                 Block start = pq.poll();
-                visited.add(start.id);
+                visited.add(start.getId());
                 //开始bfs搜索
                 Queue<Block> que = new LinkedList<>();
                 GroupBlock groupBlock = new GroupBlock();
-                groupBlock.id = id++;
-                groupBlock.blocks.add(start);
-                groupBlock.tipsCount = start.tipsCount;
+                groupBlock.setId(id++);
+                groupBlock.getBlocks().add(start);
+                groupBlock.setTipsCount(start.getTipsCount());
+                groupBlock.setGeometry(start.getGeometry());
                 que.offer(start);
                 boolean flag = true;
                 while (!que.isEmpty() && flag) {
@@ -260,32 +238,34 @@ public class GroupTips {
                         for (int[] d : ds) {
                             assert cur != null;
                             if (hasNextBlock(groupBlock, cur, visited, d)) {
-                                Block next = blocks[cur.row + d[0]][cur.col + d[1]];
-                                if (groupBlock.tipsCount >= MIN_TIPS_SIZE) {
+                                Block next = blocks[cur.getRow() + d[0]][cur.getCol() + d[1]];
+                                if (groupBlock.getTipsCount() >= MIN_TIPS_SIZE) {
                                     flag = false;
                                     break;
                                 }
                                 que.offer(next);
-                                visited.add(next.id);
-                                groupBlock.blocks.add(next);
-                                groupBlock.tipsCount += next.tipsCount;
+                                visited.add(next.getId());
+                                groupBlock.getBlocks().add(next);
+                                groupBlock.addTipsCount(next.getTipsCount());
                             }
                         }
                     }
                 }
-                groupBlock.geometry = createGroupGeometry(groupBlock);
+                groupBlock.setGeometry(createGroupGeometry2(groupBlock));
+//                groupBlock.geometry = createGroupGeometry(groupBlock);
                 groupBlocks.add(groupBlock);
             }
         }
     }
 
     private static boolean hasNextBlock(GroupBlock groupBlock, Block cur, Set<Integer> visited, int[] diff) {
-        int nr = cur.row + diff[0], nc = cur.col + diff[1];
+        int nr = cur.getRow() + diff[0];
+        int nc = cur.getCol() + diff[1];
         if (nr >= 0 && nr < blocks.length && nc >= 0 && nc < blocks[0].length) {
             Block next = blocks[nr][nc];
-            return !visited.contains(next.id)
-                    && next.geometry != null
-                    && groupBlock.tipsCount + next.tipsCount < MAX_TIPS_SIZE;
+            return !visited.contains(next.getId())
+                    && next.getGeometry() != null
+                    && groupBlock.getTipsCount() + next.getTipsCount() < MAX_TIPS_SIZE;
         }
         return false;
     }
@@ -293,31 +273,120 @@ public class GroupTips {
     private static void saveGroup(String path) throws Exception {
         BufferedWriter bw = new BufferedWriter(new FileWriter(path));
         for (GroupBlock gb : groupBlocks) {
-            bw.write(gb.id + "\t"
-                    + gb.tipsCount + "\t"
-                    + wktWriter.write(gb.geometry) + "\n");
+            bw.write(gb.getId() + "\t"
+                    + gb.getTipsCount() + "\t"
+                    + wktWriter.write(gb.getGeometry()) + "\n");
         }
         bw.close();
     }
 
+    /**
+     * 这里是把group中所有的block的geometry进行合并，合并为一个大的多边形
+     * 这个很耗时，因为要做n次空间运算
+     *
+     * @param groupBlock 一个group
+     * @return 这个group的最终的geometry
+     */
     private static Geometry createGroupGeometry(GroupBlock groupBlock) {
-        List<Block> blocks = groupBlock.blocks;
-        Geometry geometry = blocks.get(0).geometry;
+        List<Block> blocks = groupBlock.getBlocks();
+        Geometry geometry = blocks.get(0).getGeometry();
         for (int i = 1; i < blocks.size(); i++) {
-            geometry = geometry.union(blocks.get(i).geometry);
+            geometry = geometry.union(blocks.get(i).getGeometry());
         }
         return geometry;
     }
 
+    /**
+     * 这里给出一个优化过的合并block.geometry的算法
+     *
+     * @param groupBlock group
+     * @return geometry
+     */
+    private static Geometry createGroupGeometry2(GroupBlock groupBlock) {
+        //key：edge；value：该edge的数量
+        Map<Edge, Integer> edges = new HashMap<>();
+        //key：点的坐标；val：该点所属的个数为1的edge
+        Map<String, List<Edge>> pointEdges = new HashMap<>();
+        int id = 0;
+        for (Block block : groupBlock.getBlocks()) {
+            // 一个block有4条边
+            Edge edge1 = new Edge(id++, block.getLbPoint(), block.getLtPoint(), true); //左边
+            Edge edge2 = new Edge(id++, block.getRtPoint(), block.getLtPoint(), false); //上边
+            Edge edge3 = new Edge(id++, block.getRbPoint(), block.getRtPoint(), true); //右边
+            Edge edge4 = new Edge(id++, block.getRbPoint(), block.getLbPoint(), false); //下边
+            edges.put(edge1, edges.getOrDefault(edge1, 0) + 1);
+            edges.put(edge2, edges.getOrDefault(edge2, 0) + 1);
+            edges.put(edge3, edges.getOrDefault(edge3, 0) + 1);
+            edges.put(edge4, edges.getOrDefault(edge4, 0) + 1);
+        }
+        Double[] curPoint;
+        Edge curEdge = null;
+        // 所有只出现了一次的edge，就是最终多边形的envelope的一部分。现在要做的就是将这些边组成一个多边形。
+        for (Map.Entry<Edge, Integer> entry : edges.entrySet()) {
+            if (entry.getValue() == 1) {
+                Edge edge = entry.getKey();
+                String key = "" + edge.getA()[0] + "_" + edge.getA()[1];
+                pointEdges.computeIfAbsent(key, k -> new ArrayList<>());
+                pointEdges.get(key).add(edge);
+                key = "" + edge.getB()[0] + "_" + edge.getB()[1];
+                pointEdges.computeIfAbsent(key, k -> new ArrayList<>());
+                pointEdges.get(key).add(edge);
+                if (curEdge == null) {
+                    curEdge = edge;
+                }
+            }
+        }
+        List<Double[]> polygonPoints = new ArrayList<>();
+        Set<Integer> visited = new HashSet<>();
+        assert curEdge != null;
+        visited.add(curEdge.getId());
+        polygonPoints.add(curEdge.getB());
+        polygonPoints.add(curPoint = curEdge.getA());
+        while (true) {
+            List<Edge> es = pointEdges.get("" + curPoint[0] + "_" + curPoint[1]);
+            assert es.size() == 2;
+            Edge nextEdge = visited.contains(es.get(0).getId()) ? es.get(1) : es.get(0);
+            if (visited.contains(nextEdge.getId())) { //说明已经多边形已经闭合了
+                break;
+            }
+            Double[] nextPoint = (nextEdge.getA()[0].equals(curPoint[0])
+                    && nextEdge.getA()[1].equals(curPoint[1])) ?
+                    nextEdge.getB() :
+                    nextEdge.getA();
+            //这里判断下当前edge和下一条edge是否是平行的
+            if (curEdge.getVertical() == nextEdge.getVertical()) {
+                polygonPoints.remove(polygonPoints.size() - 1);
+            }
+            polygonPoints.add(nextPoint);
+            visited.add(nextEdge.getId());
+            curEdge = nextEdge;
+            curPoint = nextPoint;
+        }
+        return getPolygonFromPoints(polygonPoints).intersection(borderPolygon);
+    }
+
+    private static Polygon getPolygonFromPoints(List<Double[]> points) {
+        Coordinate[] coordinates = new Coordinate[points.size() + 1];
+        for (int i = 0; i < points.size(); i++) {
+            coordinates[i] = getCoordinate(points.get(i));
+        }
+        coordinates[points.size()] = coordinates[0];
+        return factory.createPolygon(coordinates);
+    }
+
+
     private static Coordinate[] getCoordinates(Block block) {
-        double[] range = block.range;
         Coordinate[] coordinates = new Coordinate[5];
-        coordinates[0] = new Coordinate(range[0], range[1]);
-        coordinates[1] = new Coordinate(range[2], range[1]);
-        coordinates[2] = new Coordinate(range[2], range[3]);
-        coordinates[3] = new Coordinate(range[0], range[3]);
-        coordinates[4] = new Coordinate(range[0], range[1]);
+        coordinates[0] = getCoordinate(block.getLbPoint());
+        coordinates[1] = getCoordinate(block.getLtPoint());
+        coordinates[2] = getCoordinate(block.getRtPoint());
+        coordinates[3] = getCoordinate(block.getRbPoint());
+        coordinates[4] = coordinates[0];
         return coordinates;
+    }
+
+    private static Coordinate getCoordinate(Double[] point) {
+        return new Coordinate(point[0], point[1]);
     }
 
     /**
@@ -330,7 +399,7 @@ public class GroupTips {
             for (Block block : row) {
                 Polygon tmp = factory.createPolygon(getCoordinates(block));
                 if (borderPolygon.intersects(tmp)) {
-                    block.geometry = borderPolygon.intersection(tmp);
+                    block.setGeometry(borderPolygon.intersection(tmp));
                 }// else 该block不在订单圈内，因此polygon属性为null
             }
         }
@@ -355,25 +424,26 @@ public class GroupTips {
         }
         calCount++;
         //拿到block组的四个角的坐标，组成一个大的geometry，与border做空间运算
-        double[] lbBlockRange = blocks[lbr][lbc].range;
-        double[] rtBlockRange = blocks[rtr][rtc].range;
+        Block lbBlock = blocks[lbr][lbc];
+        Block ltBlock = blocks[rtr][lbc];
+        Block rtBlock = blocks[rtr][rtc];
+        Block rbBlock = blocks[lbr][rtc];
         Coordinate[] coordinates = new Coordinate[5];
-        coordinates[0] = new Coordinate(lbBlockRange[0], lbBlockRange[1]); //左下角
-        coordinates[1] = new Coordinate(lbBlockRange[0], rtBlockRange[3]); //左上角
-        coordinates[2] = new Coordinate(rtBlockRange[2], lbBlockRange[1]); //右下角
-        coordinates[3] = new Coordinate(rtBlockRange[2], rtBlockRange[3]); //右上角
-        coordinates[4] = new Coordinate(lbBlockRange[0], lbBlockRange[1]); //左下角
+        coordinates[0] = getCoordinate(lbBlock.getLbPoint()); //左下角
+        coordinates[1] = getCoordinate(ltBlock.getLtPoint()); //左上角
+        coordinates[2] = getCoordinate(rtBlock.getRtPoint()); //右上角
+        coordinates[3] = getCoordinate(rbBlock.getRbPoint()); //右下角
+        coordinates[4] = coordinates[0]; //左下角
         Polygon polygon = factory.createPolygon(coordinates);
         if (borderPolygon.contains(polygon)) { //被包含
             for (int i = lbr; i <= rtr; i++) {
                 for (int j = lbc; j <= rtc; j++) {
-                    blocks[i][j].geometry = factory.createPolygon(getCoordinates(blocks[i][j]));
+                    blocks[i][j].setGeometry(factory.createPolygon(getCoordinates(blocks[i][j])));
                 }
             }
         } else if (borderPolygon.intersects(polygon)) { //相交
             if (lbr == rtr && lbc == rtc) { //如果该block组只有一个block
-                Geometry geometry = factory.createPolygon(getCoordinates(blocks[lbr][lbc]));
-                blocks[lbr][lbc].geometry = borderPolygon.intersection(geometry);
+                blocks[lbr][lbc].setGeometry(factory.createPolygon(getCoordinates(blocks[lbr][lbc])));
             } else { //有多个，需要四分
                 int mr = (lbr + rtr) / 2, mc = (lbc + rtc) / 2;
                 createBlockPolygon2(lbr, lbc, mr, mc); //左下部分
@@ -389,18 +459,18 @@ public class GroupTips {
         List<GroupBlock> bigGroup = new ArrayList<>();
         int smallCount = MIN_TIPS_SIZE / 2;
         for (GroupBlock gb : groupBlocks) {
-            if (gb.tipsCount <= smallCount) {
+            if (gb.getTipsCount() <= smallCount) {
                 smallGroup.add(gb);
             } else {
                 bigGroup.add(gb);
             }
         }
         //将小的group合并到大的group中
-        bigGroup.sort((o1, o2) -> (Integer.compare(o1.tipsCount, o2.tipsCount)));
+        bigGroup.sort((o1, o2) -> (Integer.compare(o1.getTipsCount(), o2.getTipsCount())));
         for (GroupBlock small : smallGroup) {
             for (GroupBlock big : bigGroup) {
-                if (big.geometry.touches(small.geometry)) {
-                    big.geometry = big.geometry.union(small.geometry);
+                if (big.getGeometry().touches(small.getGeometry())) {
+                    big.setGeometry(big.getGeometry().union(small.getGeometry()));
                     break;
                 }
             }

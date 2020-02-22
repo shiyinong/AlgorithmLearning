@@ -1,6 +1,5 @@
 package com.syn.learning.work.grouptips.model;
 
-
 /**
  * @author shiyinong
  * @version 1.0
@@ -9,7 +8,10 @@ package com.syn.learning.work.grouptips.model;
 public class Edge {
     private Integer id;
     /**
-     * a、b两点的方向始终是顺时针方向
+     * a、b两点的方向：
+     * 1.对于横边，a在右，b在左
+     * 2.对于竖边：a在下，b在上
+     * 这个顺序必须保证
      */
     private Double[] a;
     private Double[] b;
