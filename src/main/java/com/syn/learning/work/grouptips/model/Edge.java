@@ -1,5 +1,7 @@
 package com.syn.learning.work.grouptips.model;
 
+import java.util.Arrays;
+
 /**
  * @author shiyinong
  * @version 1.0
@@ -61,10 +63,7 @@ public class Edge {
 
     @Override
     public int hashCode() {
-        return ("" + this.a[0] + "_"
-                + this.a[1] + "_"
-                + this.b[0] + "_"
-                + this.b[1]).hashCode();
+        return Arrays.hashCode(new double[]{a[0], a[1], b[0], b[1]});
     }
 
     @Override

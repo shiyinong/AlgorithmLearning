@@ -5,16 +5,12 @@ import com.syn.learning.work.grouptips.model.Block;
 import com.syn.learning.work.grouptips.model.Edge;
 import com.syn.learning.work.grouptips.model.GroupBlock;
 import com.syn.learning.work.grouptips.model.Tip;
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.Polygon;
+import com.vividsolutions.jts.geom.*;
+import com.vividsolutions.jts.io.ParseException;
+import com.vividsolutions.jts.io.WKTReader;
 import com.vividsolutions.jts.io.WKTWriter;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.*;
 import java.util.*;
 
 /**
@@ -22,91 +18,91 @@ import java.util.*;
  * @version 1.0
  * @date 2020/2/20 10:24
  **/
-public class GroupTips {
-    private static GeometryFactory factory = new GeometryFactory();
-    private static WKTWriter wktWriter = new WKTWriter();
-    private static Polygon borderPolygon;
-    private static List<double[]> adminBorder = new ArrayList<double[]>();
-    private static List<Tip> tips = new ArrayList<>();
+public class SplitOrderCircle {
+    private Geometry borderGeometry;
+    private List<double[]> adminBorder;
+    private List<Tip> tips;
     /**
      * 生成的网格，n*m大小，每个元素存4个值，分别是该网格的左下角坐标和右上角坐标
      * blocks[0][0]是经度最小并且纬度也最小的网格，即地图上的左下角点
      */
-    private static Block[][] blocks;
-    private static List<GroupBlock> groupBlocks = new ArrayList<>();
-    private static int emptyThreshold;
-    private static final double BLOCK_SIZE = 0.002;
-    private static final int MAX_TIPS_SIZE = 1800;
-    private static final int MIN_TIPS_SIZE = 800;
+    private Block[][] blocks;
+    private List<GroupBlock> groupBlocks = new ArrayList<>();
+    private GeometryFactory factory = new GeometryFactory();
+    private WKTWriter wktWriter = new WKTWriter();
+    private WKTReader wktReader = new WKTReader();
+    private double blockSize;
+    private int maxTipsSize;
+    private int minTipsSize;
 
-    private static int calCount = 0;
+    public SplitOrderCircle(double blockSize, int maxTipsSize, int minTipsSize) {
+        this.blockSize = blockSize;
+        this.maxTipsSize = maxTipsSize;
+        this.minTipsSize = minTipsSize;
+    }
 
-    public static void main(String[] args) throws Exception {
-        loadBorder("C:\\work\\工单分组\\Tips抓取\\提供研发\\bj.txt");
-        createBorderPolygon();
-        loadTips("C:\\work\\工单分组\\Tips抓取\\提供研发\\实验\\北京市北京市城区_5058_cluster.txt");
-
-        long s = System.currentTimeMillis(), s2 = s;
+    /**
+     * 主函数
+     *
+     * @return 分割后的工单圈，wkt格式
+     */
+    public List<String[]> split(List<Tip> tips, String borderWkt) {
+        List<String[]> res = new ArrayList<>();
+        if (tips.size() <= minTipsSize) {
+            res.add(new String[]{"0", "" + tips.size(), borderWkt});
+            return res;
+        }
+        //加载数据
+        load(tips, borderWkt);
+        //根据border生成所有的block
         generateBlocks();
-        System.out.println("生成block：" + (System.currentTimeMillis() - s));
-
-        s = System.currentTimeMillis();
-//        createBlockPolygon();
-        createBlockPolygon2(0, 0, blocks.length - 1, blocks[0].length - 1);
-        System.out.println(calCount + " 计算block的geometry：" + (System.currentTimeMillis() - s));
-
-        s = System.currentTimeMillis();
+        //计算每一个block的polygon
+        createBlockPolygon(0, 0, blocks.length - 1, blocks[0].length - 1);
+        //计算每一个tip落在哪个block中
+        allocateTips();
+        //checkBlockGeometry
+        checkBlockGeometry();
+        //合并block，合并后得到若干个groupBlock
         mergeBlock();
-        System.out.println("合并block：" + (System.currentTimeMillis() - s));
-
-        s = System.currentTimeMillis();
+        //将tips不足阈值的group合并到与之相邻的大的group中
         mergeSmallGroup();
-        System.out.println("合并smallGroup：" + (System.currentTimeMillis() - s));
-
-        saveGroup("C:\\work\\工单分组\\Tips抓取\\提供研发\\block.txt");
-        System.out.println("总耗时：" + (System.currentTimeMillis() - s2));
+        //输出wkt格式
+        res = convert2Wkt();
+        // release
+        release();
+        return res;
     }
 
-    private static void loadBorder(String path) throws Exception {
-        BufferedReader br = new BufferedReader(new FileReader(path));
-        String line;
-        while ((line = br.readLine()) != null) {
-            String[] ps = line.substring(10, line.length() - 2).split(",");
-            for (String p : ps) {
-                String[] ss = p.split(" ");
-                adminBorder.add(new double[]{Double.parseDouble(ss[0]), Double.parseDouble(ss[1])});
-            }
+    private void load(List<Tip> tips, String borderWkt) {
+        this.tips = tips;
+        try {
+            this.borderGeometry = wktReader.read(borderWkt);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        this.adminBorder = new ArrayList<>();
+        assert borderGeometry != null;
+        Coordinate[] coordinates = borderGeometry.getCoordinates();
+        for (Coordinate c : coordinates) {
+            this.adminBorder.add(new double[]{c.x, c.y});
         }
     }
 
-    private static void createBorderPolygon() {
-        borderPolygon = getPolygonFromPoints(adminBorder);
-    }
-
-    private static void loadTips(String path) throws Exception {
-        BufferedReader br = new BufferedReader(new FileReader(path));
-        String line;
-        while ((line = br.readLine()) != null) {
-            String[] ss = line.split("\t");
-            String[] p = ss[2].substring(6, ss[2].length() - 1).split(" ");
-            Tip tip = new Tip();
-            tip.setId(Integer.parseInt(ss[0]));
-            tip.setLon(Double.parseDouble(p[0]));
-            tip.setLat(Double.parseDouble(p[1]));
-            tips.add(tip);
-        }
+    private void release() {
+        groupBlocks.clear();
+        blocks = null;
     }
 
     /**
      * 生成网格。单位均是度，不是米或千米
      */
-    private static void generateBlocks() {
+    private void generateBlocks() {
         // 下上左右四个边界
         double[] corner = searchCorner();
         double height = corner[1] - corner[0];
         double width = corner[3] - corner[2];
-        int rows = (int) ((height) / BLOCK_SIZE);
-        int cols = (int) ((width) / BLOCK_SIZE);
+        int rows = (int) ((height) / blockSize);
+        int cols = (int) ((width) / blockSize);
         double dx = width / cols;
         double dy = height / rows;
         blocks = new Block[rows][cols];
@@ -126,13 +122,9 @@ public class GroupTips {
                 blocks[i][j] = block;
             }
         }
-        //接下来给每一个tip计算他所在的网格，填充网格的tipCount属性
-        allocateTips();
-        //接下来计算每个group中可以包含的tips个数为0的网格的个数
-        calculateEmptyThreshold();
     }
 
-    private static double[] searchCorner() {
+    private double[] searchCorner() {
         /*
         下上左右四个范围，分别是：纬度最低、纬度最高、经度最小、经度最大
          */
@@ -146,11 +138,11 @@ public class GroupTips {
         return corners;
     }
 
-    private static void allocateTips() {
+    private void allocateTips() {
         for (Tip tip : tips) {
             int row = -1, col = -1;
             //二分搜索，通过纬度来确定行
-            int left = 0, right = blocks.length;
+            int left = 0, right = blocks.length - 1;
             while (left <= right) {
                 int mid = left + (right - left) / 2;
                 Block midBlock = blocks[mid][0];
@@ -166,7 +158,7 @@ public class GroupTips {
             }
             //二分搜索，通过经度确定列
             left = 0;
-            right = blocks[0].length;
+            right = blocks[0].length - 1;
             while (left <= right) {
                 int mid = left + (right - left) / 2;
                 Block midBlock = blocks[0][mid];
@@ -186,19 +178,7 @@ public class GroupTips {
         }
     }
 
-    private static void calculateEmptyThreshold() {
-        int allEmpty = 0;
-        for (Block[] row : blocks) {
-            for (Block block : row) {
-                allEmpty += block.getTipsCount() == 0 ? 1 : 0;
-            }
-        }
-        // 这是一个平均值、近似值，肯定不是最终生成的group个数
-        int groupSize = tips.size() / MAX_TIPS_SIZE;
-        emptyThreshold = allEmpty * 2 / groupSize;
-    }
-
-    private static void mergeBlock() {
+    private void mergeBlock() {
         Set<Integer> visited = new HashSet<>();
         // 经度小的在前；经度相等，纬度小的在前
         PriorityQueue<Block> pq = new PriorityQueue<>((o1, o2) ->
@@ -209,13 +189,12 @@ public class GroupTips {
         for (Block[] rows : blocks) {
             Collections.addAll(pq, rows);
         }
-        //八邻域
-        int[][] ds = new int[][]{{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
-        //四邻域
-//        int[][] ds = new int[][]{{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+        //八邻域 还是 四邻域？
+//        int[][] ds = new int[][]{{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
+        int[][] ds = new int[][]{{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
         while (!pq.isEmpty()) {
             while (!pq.isEmpty()
-                    && (visited.contains(pq.peek().getId()) || pq.peek().getGeometry() == null)) {
+                    && (visited.contains(pq.peek().getId()) || null == pq.peek().getGeometry())) {
                 pq.poll();
             }
             if (!pq.isEmpty()) {
@@ -239,7 +218,7 @@ public class GroupTips {
                             assert cur != null;
                             if (hasNextBlock(groupBlock, cur, visited, d)) {
                                 Block next = blocks[cur.getRow() + d[0]][cur.getCol() + d[1]];
-                                if (groupBlock.getTipsCount() >= MIN_TIPS_SIZE) {
+                                if (groupBlock.getTipsCount() >= minTipsSize) {
                                     flag = false;
                                     break;
                                 }
@@ -252,32 +231,33 @@ public class GroupTips {
                     }
                 }
                 groupBlock.setGeometry(createGroupGeometry2(groupBlock));
-//                groupBlock.geometry = createGroupGeometry(groupBlock);
                 groupBlocks.add(groupBlock);
             }
         }
     }
 
-    private static boolean hasNextBlock(GroupBlock groupBlock, Block cur, Set<Integer> visited, int[] diff) {
+    private boolean hasNextBlock(GroupBlock groupBlock, Block cur, Set<Integer> visited, int[] diff) {
         int nr = cur.getRow() + diff[0];
         int nc = cur.getCol() + diff[1];
         if (nr >= 0 && nr < blocks.length && nc >= 0 && nc < blocks[0].length) {
             Block next = blocks[nr][nc];
             return !visited.contains(next.getId())
                     && next.getGeometry() != null
-                    && groupBlock.getTipsCount() + next.getTipsCount() < MAX_TIPS_SIZE;
+                    && groupBlock.getTipsCount() + next.getTipsCount() < maxTipsSize;
         }
         return false;
     }
 
-    private static void saveGroup(String path) throws Exception {
-        BufferedWriter bw = new BufferedWriter(new FileWriter(path));
+    private List<String[]> convert2Wkt() {
+        List<String[]> res = new ArrayList<>();
         for (GroupBlock gb : groupBlocks) {
-            bw.write(gb.getId() + "\t"
-                    + gb.getTipsCount() + "\t"
-                    + wktWriter.write(gb.getGeometry()) + "\n");
+            String[] ss = new String[3];
+            ss[0] = "" + gb.getId();
+            ss[1] = "" + gb.getTipsCount();
+            ss[2] = wktWriter.write(gb.getGeometry());
+            res.add(ss);
         }
-        bw.close();
+        return res;
     }
 
     /**
@@ -287,7 +267,7 @@ public class GroupTips {
      * @param groupBlock 一个group
      * @return 这个group的最终的geometry
      */
-    private static Geometry createGroupGeometry(GroupBlock groupBlock) {
+    private Geometry createGroupGeometry(GroupBlock groupBlock) {
         List<Block> blocks = groupBlock.getBlocks();
         Geometry geometry = blocks.get(0).getGeometry();
         for (int i = 1; i < blocks.size(); i++) {
@@ -302,11 +282,11 @@ public class GroupTips {
      * @param groupBlock group
      * @return geometry
      */
-    private static Geometry createGroupGeometry2(GroupBlock groupBlock) {
+    private Geometry createGroupGeometry2(GroupBlock groupBlock) {
         //key：edge；value：该edge的数量
         Map<Edge, Integer> edges = new HashMap<>();
         //key：点的坐标；val：该点所属的个数为1的edge
-        Map<String, List<Edge>> pointEdges = new HashMap<>();
+        Map<Integer, List<Edge>> pointEdges = new HashMap<>();
         int id = 0;
         for (Block block : groupBlock.getBlocks()) {
             // 一个block有4条边
@@ -325,10 +305,10 @@ public class GroupTips {
         for (Map.Entry<Edge, Integer> entry : edges.entrySet()) {
             if (entry.getValue() == 1) {
                 Edge edge = entry.getKey();
-                String key = "" + edge.getA()[0] + "_" + edge.getA()[1];
+                int key = Arrays.hashCode(edge.getA());
                 pointEdges.computeIfAbsent(key, k -> new ArrayList<>());
                 pointEdges.get(key).add(edge);
-                key = "" + edge.getB()[0] + "_" + edge.getB()[1];
+                key = Arrays.hashCode(edge.getB());
                 pointEdges.computeIfAbsent(key, k -> new ArrayList<>());
                 pointEdges.get(key).add(edge);
                 if (curEdge == null) {
@@ -343,7 +323,7 @@ public class GroupTips {
         polygonPoints.add(curEdge.getB());
         polygonPoints.add(curPoint = curEdge.getA());
         while (true) {
-            List<Edge> es = pointEdges.get("" + curPoint[0] + "_" + curPoint[1]);
+            List<Edge> es = pointEdges.get(Arrays.hashCode(curPoint));
             assert es.size() == 2;
             Edge nextEdge = visited.contains(es.get(0).getId()) ? es.get(1) : es.get(0);
             if (visited.contains(nextEdge.getId())) { //说明已经多边形已经闭合了
@@ -354,18 +334,29 @@ public class GroupTips {
                     nextEdge.getB() :
                     nextEdge.getA();
             //这里判断下当前edge和下一条edge是否是平行的
-            if (curEdge.getVertical() == nextEdge.getVertical()) {
-                polygonPoints.remove(polygonPoints.size() - 1);
-            }
+//            if (curEdge.getVertical() == nextEdge.getVertical()) {
+//                polygonPoints.remove(polygonPoints.size() - 1);
+//            }
             polygonPoints.add(nextPoint);
             visited.add(nextEdge.getId());
             curEdge = nextEdge;
             curPoint = nextPoint;
         }
-        return getPolygonFromPoints(polygonPoints).intersection(borderPolygon);
+        Geometry res = null;
+        try {
+            res = getPolygonFromPoints(polygonPoints).intersection(borderGeometry);
+        } catch (TopologyException e) {
+            Polygon polygon = getPolygonFromPoints(polygonPoints);
+            String sss = wktWriter.write(polygon);
+            Geometry groupGeometry = createGroupGeometry(groupBlock);
+            String ss = wktWriter.write(groupGeometry);
+            e.printStackTrace();
+        }
+        return res;
+//        return getPolygonFromPoints(polygonPoints).intersection(borderGeometry);
     }
 
-    private static Polygon getPolygonFromPoints(List<double[]> points) {
+    private Polygon getPolygonFromPoints(List<double[]> points) {
         Coordinate[] coordinates = new Coordinate[points.size() + 1];
         for (int i = 0; i < points.size(); i++) {
             coordinates[i] = getCoordinate(points.get(i));
@@ -374,7 +365,7 @@ public class GroupTips {
         return factory.createPolygon(coordinates);
     }
 
-    private static Coordinate[] getCoordinates(Block block) {
+    private Coordinate[] getCoordinates(Block block) {
         Coordinate[] coordinates = new Coordinate[5];
         coordinates[0] = getCoordinate(block.getLbPoint());
         coordinates[1] = getCoordinate(block.getLtPoint());
@@ -384,7 +375,7 @@ public class GroupTips {
         return coordinates;
     }
 
-    private static Coordinate getCoordinate(double[] point) {
+    private Coordinate getCoordinate(double[] point) {
         return new Coordinate(point[0], point[1]);
     }
 
@@ -393,12 +384,12 @@ public class GroupTips {
      * 那么该block的geometry要与订单圈求交集。
      * 这个算法太暴力了如果block的个数太多，那么会相当慢。
      */
-    private static void createBlockPolygon() {
+    private void createBlockPolygon() {
         for (Block[] row : blocks) {
             for (Block block : row) {
                 Polygon tmp = factory.createPolygon(getCoordinates(block));
-                if (borderPolygon.intersects(tmp)) {
-                    block.setGeometry(borderPolygon.intersection(tmp));
+                if (borderGeometry.intersects(tmp)) {
+                    block.setGeometry(borderGeometry.intersection(tmp));
                 }// else 该block不在订单圈内，因此polygon属性为null
             }
         }
@@ -408,7 +399,7 @@ public class GroupTips {
      * 这里通过四分法来计算每一个block的geometry。
      * 其实之前算法的瓶颈就是每个block都要与border做空间计算，现在优化这一步，
      * 优化方式就是将所有的block看作一个大的block，和border做空间计算：
-     * 1.如果与border不想交，那么这个大的block的所有小的block都和border不相交；
+     * 1.如果与border不相交，那么这个大的block中所有小的block都和border不相交；
      * 2.如果被border包含在内，那么所有小的block都被border包含在内，block的geometry就是自身坐标；
      * 3.如果与border相交，那么将这个大的block分成四等份，每一份都重复上面的运算。
      *
@@ -417,11 +408,10 @@ public class GroupTips {
      * @param rtr 右上角的行索引
      * @param rtc 右上角的列索引
      */
-    private static void createBlockPolygon2(int lbr, int lbc, int rtr, int rtc) {
+    private void createBlockPolygon(int lbr, int lbc, int rtr, int rtc) {
         if (lbr > rtr || lbc > rtc) {
             return;
         }
-        calCount++;
         //拿到block组的四个角的坐标，组成一个大的geometry，与border做空间运算
         Block lbBlock = blocks[lbr][lbc];
         Block ltBlock = blocks[rtr][lbc];
@@ -434,29 +424,29 @@ public class GroupTips {
         coordinates[3] = getCoordinate(rbBlock.getRbPoint()); //右下角
         coordinates[4] = coordinates[0]; //左下角
         Polygon polygon = factory.createPolygon(coordinates);
-        if (borderPolygon.contains(polygon)) { //被包含
+        if (borderGeometry.contains(polygon)) { //被包含
             for (int i = lbr; i <= rtr; i++) {
                 for (int j = lbc; j <= rtc; j++) {
                     blocks[i][j].setGeometry(factory.createPolygon(getCoordinates(blocks[i][j])));
                 }
             }
-        } else if (borderPolygon.intersects(polygon)) { //相交
+        } else if (borderGeometry.intersects(polygon)) { //相交
             if (lbr == rtr && lbc == rtc) { //如果该block组只有一个block
                 blocks[lbr][lbc].setGeometry(factory.createPolygon(getCoordinates(blocks[lbr][lbc])));
             } else { //有多个，需要四分
                 int mr = (lbr + rtr) / 2, mc = (lbc + rtc) / 2;
-                createBlockPolygon2(lbr, lbc, mr, mc); //左下部分
-                createBlockPolygon2(mr + 1, lbc, rtr, mc); //左上部分
-                createBlockPolygon2(lbr, mc + 1, mr, rtc); //右下部分
-                createBlockPolygon2(mr + 1, mc + 1, rtr, rtc); //右上部分
+                createBlockPolygon(lbr, lbc, mr, mc); //左下部分
+                createBlockPolygon(mr + 1, lbc, rtr, mc); //左上部分
+                createBlockPolygon(lbr, mc + 1, mr, rtc); //右下部分
+                createBlockPolygon(mr + 1, mc + 1, rtr, rtc); //右上部分
             }
         } //else 不相交，那么所有的block均为null即可
     }
 
-    private static void mergeSmallGroup() {
+    private void mergeSmallGroup() {
         List<GroupBlock> smallGroup = new ArrayList<>();
         List<GroupBlock> bigGroup = new ArrayList<>();
-        int smallCount = MIN_TIPS_SIZE / 2;
+        int smallCount = minTipsSize / 2;
         for (GroupBlock gb : groupBlocks) {
             if (gb.getTipsCount() <= smallCount) {
                 smallGroup.add(gb);
@@ -476,4 +466,21 @@ public class GroupTips {
         }
         groupBlocks = bigGroup;
     }
+
+    private void checkBlockGeometry() {
+        for (int i = 0; i < blocks.length; i++) {
+            for (int j = 0; j < blocks[0].length; j++) {
+                // 不能出现中空现象,当前限制考虑一个空格
+                if (blocks[i][j].getGeometry() == null
+                        && i > 0 && blocks[i - 1][j].getGeometry() != null
+                        && j > 0 && blocks[i][j - 1].getGeometry() != null
+                        && i < blocks.length - 1 && blocks[i + 1][j].getGeometry() != null
+                        && j < blocks[0].length - 1 && blocks[i][j + 1].getGeometry() != null) {
+                    blocks[i][j].setGeometry(factory.createPolygon(getCoordinates(blocks[i][j])));
+                }
+            }
+        }
+    }
+
+
 }
