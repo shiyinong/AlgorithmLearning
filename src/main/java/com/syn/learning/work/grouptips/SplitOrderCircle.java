@@ -22,8 +22,7 @@ public class SplitOrderCircle {
     private List<double[]> adminBorder;
     private List<Tip> tips;
     /**
-     * 生成的网格，n*m大小，每个元素存4个值，分别是该网格的左下角坐标和右上角坐标
-     * blocks[0][0]是经度最小并且纬度也最小的网格，即地图上的左下角点
+     * 生成的网格，n*m大小,blocks[0][0]是经度最小并且纬度也最小的网格，即地图上的左下角点
      */
     private Block[][] blocks;
     private List<GroupBlock> groupBlocks = new ArrayList<>();
@@ -189,63 +188,63 @@ public class SplitOrderCircle {
                 (o1.getCol().equals(o2.getCol()) ?
                         Integer.compare(o1.getRow(), o2.getRow()) :
                         Integer.compare(o1.getCol(), o2.getCol())));
-        int id = 0;
+        int groupId = 0;
         for (Block[] rows : blocks) {
             Collections.addAll(pq, rows);
         }
         //八邻域，顺序分别是：下，左，上，右，左下，左上，右上，右下。顺序不能变，因为后面有用到
         int[][] ds = new int[][]{{-1, 0}, {0, -1}, {1, 0}, {0, 1}, {-1, -1}, {1, -1}, {1, 1}, {-1, 1}};
         while (!pq.isEmpty()) {
-            while (!pq.isEmpty()
-                    && (visited.contains(pq.peek().getId()) || null == pq.peek().getGeometry())) {
-                pq.poll();
-            }
-            if (!pq.isEmpty()) {
-                Block start = pq.poll();
+            Block start = pq.poll();
+            if (!visited.contains(start.getId()) && start.getGeometry() != null) {
                 visited.add(start.getId());
-                Queue<Block> que = new LinkedList<>();
-                GroupBlock groupBlock = new GroupBlock();
-                groupBlock.setId(id++);
-                groupBlock.getBlocks().add(start);
-                groupBlock.setTipsCount(start.getTipsCount());
-                groupBlock.setGeometry(start.getGeometry());
-                que.offer(start);
-                boolean flag = true;
-                //开始bfs搜索
-                while (!que.isEmpty() && flag) {
-                    int size = que.size();
-                    for (int i = 0; i < size && flag; i++) {
-                        // 取8邻域的8个block
-                        Block cur = que.poll();
-                        boolean[] hasAdd = new boolean[8];
-                        for (int j = 0; j < 8; j++) {
-                            int[] d = ds[j];
-                            assert cur != null;
-                            if (hasNextBlock(groupBlock, cur, visited, d)) {
-                                Block next = blocks[cur.getRow() + d[0]][cur.getCol() + d[1]];
-                                if (groupBlock.getTipsCount() >= minTipsSize) {
-                                    flag = false;
-                                    break;
-                                } else if (j > 3 && !hasAdd[j - 4] && !hasAdd[(j - 3) % 4]) {
-                                    /*
-                                     八邻域中，四个边角。如果想加入边角，那么必须得先加入四邻域中与之相邻的格子
-                                     这样是为了防止对角线现象出现
-                                      */
-                                    continue;
-                                }
-                                hasAdd[j] = true;
-                                que.offer(next);
-                                visited.add(next.getId());
-                                groupBlock.getBlocks().add(next);
-                                groupBlock.addTipsCount(next.getTipsCount());
-                            }
-                        }
-                    }
-                }
-                groupBlock.setGeometry(createGroupGeometry2(groupBlock));
-                groupBlocks.add(groupBlock);
+                searchBlock(start, visited, ds, groupId++);
             }
         }
+    }
+
+    private void searchBlock(Block start, Set<Integer> visited, int[][] ds, int groupId) {
+        Queue<Block> que = new LinkedList<>();
+        GroupBlock groupBlock = new GroupBlock();
+        groupBlock.setId(groupId);
+        groupBlock.getBlocks().add(start);
+        groupBlock.setTipsCount(start.getTipsCount());
+        groupBlock.setGeometry(start.getGeometry());
+        que.offer(start);
+        boolean flag = true;
+        //开始bfs搜索
+        while (!que.isEmpty() && flag) {
+            int size = que.size();
+            for (int i = 0; i < size && flag; i++) {
+                // 取8邻域的8个block
+                Block cur = que.poll();
+                boolean[] hasAdd = new boolean[8];
+                for (int j = 0; j < 8; j++) {
+                    int[] d = ds[j];
+                    assert cur != null;
+                    if (hasNextBlock(groupBlock, cur, visited, d)) {
+                        Block next = blocks[cur.getRow() + d[0]][cur.getCol() + d[1]];
+                        if (groupBlock.getTipsCount() >= minTipsSize) {
+                            flag = false;
+                            break;
+                        } else if (j > 3 && !hasAdd[j - 4] && !hasAdd[(j - 3) % 4]) {
+                            /*
+                             八邻域中，四个边角。如果想加入边角，那么必须得先加入四邻域中与之相邻的格子
+                             这样是为了防止对角线现象出现
+                            */
+                            continue;
+                        }
+                        hasAdd[j] = true;
+                        que.offer(next);
+                        visited.add(next.getId());
+                        groupBlock.getBlocks().add(next);
+                        groupBlock.addTipsCount(next.getTipsCount());
+                    }
+                }
+            }
+        }
+        groupBlock.setGeometry(createGroupGeometry2(groupBlock));
+        groupBlocks.add(groupBlock);
     }
 
     private boolean hasNextBlock(GroupBlock groupBlock, Block cur, Set<Integer> visited, int[] diff) {
@@ -346,9 +345,9 @@ public class SplitOrderCircle {
                     nextEdge.getB() :
                     nextEdge.getA();
             //这里判断下当前edge和下一条edge是否是平行的
-//            if (curEdge.getVertical() == nextEdge.getVertical()) {
-//                polygonPoints.remove(polygonPoints.size() - 1);
-//            }
+            if (curEdge.getVertical() == nextEdge.getVertical()) {
+                polygonPoints.remove(polygonPoints.size() - 1);
+            }
             polygonPoints.add(nextPoint);
             visited.add(nextEdge.getId());
             curEdge = nextEdge;
@@ -393,7 +392,7 @@ public class SplitOrderCircle {
      * 那么该block的geometry要与订单圈求交集。
      * 这个算法太暴力了如果block的个数太多，那么会相当慢。
      */
-    private void createBlockPolygon1() {
+    private void createBlockPolygonHelper() {
         for (Block[] row : blocks) {
             for (Block block : row) {
                 Polygon tmp = factory.createPolygon(getCoordinates(block));
@@ -405,6 +404,7 @@ public class SplitOrderCircle {
     }
 
     private void createBlockPolygon() {
+//        createBlockPolygonHelper()
         createBlockPolygonHelper(0, 0, blocks.length - 1, blocks[0].length - 1);
     }
 
@@ -494,6 +494,4 @@ public class SplitOrderCircle {
             }
         }
     }
-
-
 }
