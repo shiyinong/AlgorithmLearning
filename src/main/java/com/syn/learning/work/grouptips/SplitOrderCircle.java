@@ -10,7 +10,6 @@ import com.vividsolutions.jts.io.ParseException;
 import com.vividsolutions.jts.io.WKTReader;
 import com.vividsolutions.jts.io.WKTWriter;
 
-import java.io.*;
 import java.util.*;
 
 /**
@@ -44,6 +43,8 @@ public class SplitOrderCircle {
     /**
      * 主函数
      *
+     * @param tips      该订单全内的tips
+     * @param borderWkt 该订单圈的边界，wkt格式
      * @return 分割后的工单圈，wkt格式
      */
     public List<String[]> split(List<Tip> tips, String borderWkt) {
@@ -57,7 +58,7 @@ public class SplitOrderCircle {
         //根据border生成所有的block
         generateBlocks();
         //计算每一个block的polygon
-        createBlockPolygon(0, 0, blocks.length - 1, blocks[0].length - 1);
+        createBlockPolygon();
         //计算每一个tip落在哪个block中
         allocateTips();
         //checkBlockGeometry
@@ -91,6 +92,9 @@ public class SplitOrderCircle {
     private void release() {
         groupBlocks.clear();
         blocks = null;
+        borderGeometry = null;
+        adminBorder.clear();
+        tips.clear();
     }
 
     /**
@@ -189,9 +193,8 @@ public class SplitOrderCircle {
         for (Block[] rows : blocks) {
             Collections.addAll(pq, rows);
         }
-        //八邻域 还是 四邻域？
-//        int[][] ds = new int[][]{{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
-        int[][] ds = new int[][]{{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+        //八邻域，顺序分别是：下，左，上，右，左下，左上，右上，右下。顺序不能变，因为后面有用到
+        int[][] ds = new int[][]{{-1, 0}, {0, -1}, {1, 0}, {0, 1}, {-1, -1}, {1, -1}, {1, 1}, {-1, 1}};
         while (!pq.isEmpty()) {
             while (!pq.isEmpty()
                     && (visited.contains(pq.peek().getId()) || null == pq.peek().getGeometry())) {
@@ -200,7 +203,6 @@ public class SplitOrderCircle {
             if (!pq.isEmpty()) {
                 Block start = pq.poll();
                 visited.add(start.getId());
-                //开始bfs搜索
                 Queue<Block> que = new LinkedList<>();
                 GroupBlock groupBlock = new GroupBlock();
                 groupBlock.setId(id++);
@@ -209,19 +211,29 @@ public class SplitOrderCircle {
                 groupBlock.setGeometry(start.getGeometry());
                 que.offer(start);
                 boolean flag = true;
+                //开始bfs搜索
                 while (!que.isEmpty() && flag) {
                     int size = que.size();
                     for (int i = 0; i < size && flag; i++) {
-                        // 取4邻域的4个block
+                        // 取8邻域的8个block
                         Block cur = que.poll();
-                        for (int[] d : ds) {
+                        boolean[] hasAdd = new boolean[8];
+                        for (int j = 0; j < 8; j++) {
+                            int[] d = ds[j];
                             assert cur != null;
                             if (hasNextBlock(groupBlock, cur, visited, d)) {
                                 Block next = blocks[cur.getRow() + d[0]][cur.getCol() + d[1]];
                                 if (groupBlock.getTipsCount() >= minTipsSize) {
                                     flag = false;
                                     break;
+                                } else if (j > 3 && !hasAdd[j - 4] && !hasAdd[(j - 3) % 4]) {
+                                    /*
+                                     八邻域中，四个边角。如果想加入边角，那么必须得先加入四邻域中与之相邻的格子
+                                     这样是为了防止对角线现象出现
+                                      */
+                                    continue;
                                 }
+                                hasAdd[j] = true;
                                 que.offer(next);
                                 visited.add(next.getId());
                                 groupBlock.getBlocks().add(next);
@@ -342,18 +354,15 @@ public class SplitOrderCircle {
             curEdge = nextEdge;
             curPoint = nextPoint;
         }
-        Geometry res = null;
-        try {
-            res = getPolygonFromPoints(polygonPoints).intersection(borderGeometry);
-        } catch (TopologyException e) {
-            Polygon polygon = getPolygonFromPoints(polygonPoints);
-            String sss = wktWriter.write(polygon);
-            Geometry groupGeometry = createGroupGeometry(groupBlock);
-            String ss = wktWriter.write(groupGeometry);
-            e.printStackTrace();
-        }
-        return res;
-//        return getPolygonFromPoints(polygonPoints).intersection(borderGeometry);
+//        Geometry res = null;
+//        try {
+//            res = getPolygonFromPoints(polygonPoints).intersection(borderGeometry);
+//        } catch (TopologyException e) {
+//            String ss = wktWriter.write(createGroupGeometry(groupBlock));
+//            String s = wktWriter.write(getPolygonFromPoints(polygonPoints));
+//            e.printStackTrace();
+//        }
+        return getPolygonFromPoints(polygonPoints).intersection(borderGeometry);
     }
 
     private Polygon getPolygonFromPoints(List<double[]> points) {
@@ -384,7 +393,7 @@ public class SplitOrderCircle {
      * 那么该block的geometry要与订单圈求交集。
      * 这个算法太暴力了如果block的个数太多，那么会相当慢。
      */
-    private void createBlockPolygon() {
+    private void createBlockPolygon1() {
         for (Block[] row : blocks) {
             for (Block block : row) {
                 Polygon tmp = factory.createPolygon(getCoordinates(block));
@@ -393,6 +402,10 @@ public class SplitOrderCircle {
                 }// else 该block不在订单圈内，因此polygon属性为null
             }
         }
+    }
+
+    private void createBlockPolygon() {
+        createBlockPolygonHelper(0, 0, blocks.length - 1, blocks[0].length - 1);
     }
 
     /**
@@ -408,7 +421,7 @@ public class SplitOrderCircle {
      * @param rtr 右上角的行索引
      * @param rtc 右上角的列索引
      */
-    private void createBlockPolygon(int lbr, int lbc, int rtr, int rtc) {
+    private void createBlockPolygonHelper(int lbr, int lbc, int rtr, int rtc) {
         if (lbr > rtr || lbc > rtc) {
             return;
         }
@@ -435,10 +448,10 @@ public class SplitOrderCircle {
                 blocks[lbr][lbc].setGeometry(factory.createPolygon(getCoordinates(blocks[lbr][lbc])));
             } else { //有多个，需要四分
                 int mr = (lbr + rtr) / 2, mc = (lbc + rtc) / 2;
-                createBlockPolygon(lbr, lbc, mr, mc); //左下部分
-                createBlockPolygon(mr + 1, lbc, rtr, mc); //左上部分
-                createBlockPolygon(lbr, mc + 1, mr, rtc); //右下部分
-                createBlockPolygon(mr + 1, mc + 1, rtr, rtc); //右上部分
+                createBlockPolygonHelper(lbr, lbc, mr, mc); //左下部分
+                createBlockPolygonHelper(mr + 1, lbc, rtr, mc); //左上部分
+                createBlockPolygonHelper(lbr, mc + 1, mr, rtc); //右下部分
+                createBlockPolygonHelper(mr + 1, mc + 1, rtr, rtc); //右上部分
             }
         } //else 不相交，那么所有的block均为null即可
     }
