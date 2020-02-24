@@ -42,7 +42,7 @@ public class SplitOrderCircle {
     /**
      * 主函数
      *
-     * @param tips      该订单全内的tips
+     * @param tips      该订单圈内的tips
      * @param borderWkt 该订单圈的边界，wkt格式
      * @return 分割后的工单圈，wkt格式
      */
@@ -56,7 +56,7 @@ public class SplitOrderCircle {
         load(tips, borderWkt);
         //根据border生成所有的block
         generateBlocks();
-        //计算每一个block的polygon
+        //计算每一个block的geometry
         createBlockPolygon();
         //计算每一个tip落在哪个block中
         allocateTips();
@@ -104,8 +104,8 @@ public class SplitOrderCircle {
         double[] corner = searchCorner();
         double height = corner[1] - corner[0];
         double width = corner[3] - corner[2];
-        int rows = (int) ((height) / blockSize);
-        int cols = (int) ((width) / blockSize);
+        int rows = (int) (height / blockSize);
+        int cols = (int) (width / blockSize);
         double dx = width / cols;
         double dy = height / rows;
         blocks = new Block[rows][cols];
@@ -257,18 +257,6 @@ public class SplitOrderCircle {
                     && groupBlock.getTipsCount() + next.getTipsCount() < maxTipsSize;
         }
         return false;
-    }
-
-    private List<String[]> convert2Wkt() {
-        List<String[]> res = new ArrayList<>();
-        for (GroupBlock gb : groupBlocks) {
-            String[] ss = new String[3];
-            ss[0] = "" + gb.getId();
-            ss[1] = "" + gb.getTipsCount();
-            ss[2] = wktWriter.write(gb.getGeometry());
-            res.add(ss);
-        }
-        return res;
     }
 
     /**
@@ -493,5 +481,17 @@ public class SplitOrderCircle {
                 }
             }
         }
+    }
+
+    private List<String[]> convert2Wkt() {
+        List<String[]> res = new ArrayList<>();
+        for (GroupBlock gb : groupBlocks) {
+            String[] ss = new String[3];
+            ss[0] = "" + gb.getId();
+            ss[1] = "" + gb.getTipsCount();
+            ss[2] = wktWriter.write(gb.getGeometry());
+            res.add(ss);
+        }
+        return res;
     }
 }
