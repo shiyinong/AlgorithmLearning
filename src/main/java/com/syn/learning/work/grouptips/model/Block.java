@@ -1,6 +1,5 @@
 package com.syn.learning.work.grouptips.model;
 
-import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * @author shiyinong
@@ -12,7 +11,10 @@ public class Block {
     private Integer row;
     private Integer col;
     private Integer tipsCount;
-    private Geometry geometry;
+    /**
+     * 如果block在订单圈内，为true，否则为false
+     */
+    private boolean valid;
     private double[] lbPoint; //左下角坐标
     private double[] ltPoint; //左上角坐标
     private double[] rbPoint; //右下角坐标
@@ -58,12 +60,12 @@ public class Block {
         this.tipsCount = tipsCount;
     }
 
-    public Geometry getGeometry() {
-        return geometry;
+    public boolean getValid() {
+        return valid;
     }
 
-    public void setGeometry(Geometry geometry) {
-        this.geometry = geometry;
+    public void setValid(boolean valid) {
+        this.valid= valid;
     }
 
     public double[] getLbPoint() {

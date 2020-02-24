@@ -141,6 +141,77 @@ public class SplitOrderCircle {
         return corners;
     }
 
+
+    /**
+     * 这里计算每一个block是否在订单圈内，如果刚好在订单圈的边界上
+     * 那么该block的geometry要与订单圈求交集。
+     * 这个算法太暴力了如果block的个数太多，那么会相当慢。
+     */
+    private void createBlockPolygonHelper() {
+        for (Block[] row : blocks) {
+            for (Block block : row) {
+                Polygon tmp = factory.createPolygon(getCoordinates(block));
+                if (borderGeometry.intersects(tmp)) {
+                    block.setValid(true);
+                }// else 该block不在订单圈内，因此polygon属性为null
+            }
+        }
+    }
+
+    private void createBlockPolygon() {
+//        createBlockPolygonHelper()
+        createBlockPolygonHelper(0, 0, blocks.length - 1, blocks[0].length - 1);
+    }
+
+    /**
+     * 这里通过四分法来计算每一个block的geometry。
+     * 其实之前算法的瓶颈就是每个block都要与border做空间计算，现在优化这一步，
+     * 优化方式就是将所有的block看作一个大的block，和border做空间计算：
+     * 1.如果与border不相交，那么这个大的block中所有小的block都和border不相交；
+     * 2.如果被border包含在内，那么所有小的block都被border包含在内，block的geometry就是自身坐标；
+     * 3.如果与border相交，那么将这个大的block分成四等份，每一份都重复上面的运算。
+     *
+     * @param lbr 左下角的行索引
+     * @param lbc 左下角的列索引
+     * @param rtr 右上角的行索引
+     * @param rtc 右上角的列索引
+     */
+    private void createBlockPolygonHelper(int lbr, int lbc, int rtr, int rtc) {
+        if (lbr > rtr || lbc > rtc) {
+            return;
+        }
+        //拿到block组的四个角的坐标，组成一个大的geometry，与border做空间运算
+        Block lbBlock = blocks[lbr][lbc];
+        Block ltBlock = blocks[rtr][lbc];
+        Block rtBlock = blocks[rtr][rtc];
+        Block rbBlock = blocks[lbr][rtc];
+        Coordinate[] coordinates = new Coordinate[5];
+        coordinates[0] = getCoordinate(lbBlock.getLbPoint()); //左下角
+        coordinates[1] = getCoordinate(ltBlock.getLtPoint()); //左上角
+        coordinates[2] = getCoordinate(rtBlock.getRtPoint()); //右上角
+        coordinates[3] = getCoordinate(rbBlock.getRbPoint()); //右下角
+        coordinates[4] = coordinates[0]; //左下角
+        Polygon polygon = factory.createPolygon(coordinates);
+        if (borderGeometry.contains(polygon)) { //被包含
+            for (int i = lbr; i <= rtr; i++) {
+                for (int j = lbc; j <= rtc; j++) {
+                    blocks[i][j].setValid(true);
+                }
+            }
+        } else if (borderGeometry.intersects(polygon)) { //相交
+            if (lbr == rtr && lbc == rtc) { //如果该block组只有一个block
+                blocks[lbr][lbc].setValid(true);
+            } else { //有多个，需要四分
+                int mr = (lbr + rtr) / 2, mc = (lbc + rtc) / 2;
+                createBlockPolygonHelper(lbr, lbc, mr, mc); //左下部分
+                createBlockPolygonHelper(mr + 1, lbc, rtr, mc); //左上部分
+                createBlockPolygonHelper(lbr, mc + 1, mr, rtc); //右下部分
+                createBlockPolygonHelper(mr + 1, mc + 1, rtr, rtc); //右上部分
+            }
+        } //else 不相交，那么所有的block均为null即可
+    }
+
+
     private void allocateTips() {
         for (Tip tip : tips) {
             int row = -1, col = -1;
@@ -181,6 +252,21 @@ public class SplitOrderCircle {
         }
     }
 
+    private void checkBlockGeometry() {
+        for (int i = 0; i < blocks.length; i++) {
+            for (int j = 0; j < blocks[0].length; j++) {
+                // 不能出现中空现象,当前限制考虑一个空格
+                if (!blocks[i][j].getValid()
+                        && i > 0 && blocks[i - 1][j].getValid()
+                        && j > 0 && blocks[i][j - 1].getValid()
+                        && i < blocks.length - 1 && blocks[i + 1][j].getValid()
+                        && j < blocks[0].length - 1 && blocks[i][j + 1].getValid()) {
+                    blocks[i][j].setValid(true);
+                }
+            }
+        }
+    }
+
     private void mergeBlock() {
         Set<Integer> visited = new HashSet<>();
         // 经度小的在前；经度相等，纬度小的在前
@@ -196,7 +282,7 @@ public class SplitOrderCircle {
         int[][] ds = new int[][]{{-1, 0}, {0, -1}, {1, 0}, {0, 1}, {-1, -1}, {1, -1}, {1, 1}, {-1, 1}};
         while (!pq.isEmpty()) {
             Block start = pq.poll();
-            if (!visited.contains(start.getId()) && start.getGeometry() != null) {
+            if (!visited.contains(start.getId()) && start.getValid()) {
                 visited.add(start.getId());
                 searchBlock(start, visited, ds, groupId++);
             }
@@ -209,7 +295,6 @@ public class SplitOrderCircle {
         groupBlock.setId(groupId);
         groupBlock.getBlocks().add(start);
         groupBlock.setTipsCount(start.getTipsCount());
-        groupBlock.setGeometry(start.getGeometry());
         que.offer(start);
         boolean flag = true;
         //开始bfs搜索
@@ -253,7 +338,7 @@ public class SplitOrderCircle {
         if (nr >= 0 && nr < blocks.length && nc >= 0 && nc < blocks[0].length) {
             Block next = blocks[nr][nc];
             return !visited.contains(next.getId())
-                    && next.getGeometry() != null
+                    && next.getValid()
                     && groupBlock.getTipsCount() + next.getTipsCount() < maxTipsSize;
         }
         return false;
@@ -267,12 +352,13 @@ public class SplitOrderCircle {
      * @return 这个group的最终的geometry
      */
     private Geometry createGroupGeometry(GroupBlock groupBlock) {
-        List<Block> blocks = groupBlock.getBlocks();
-        Geometry geometry = blocks.get(0).getGeometry();
-        for (int i = 1; i < blocks.size(); i++) {
-            geometry = geometry.union(blocks.get(i).getGeometry());
-        }
-        return geometry;
+//        List<Block> blocks = groupBlock.getBlocks();
+//        Geometry geometry = blocks.get(0).getGeometry();
+//        for (int i = 1; i < blocks.size(); i++) {
+//            geometry = geometry.union(blocks.get(i).getGeometry());
+//        }
+//        return geometry;
+        return null;
     }
 
     /**
@@ -375,75 +461,6 @@ public class SplitOrderCircle {
         return new Coordinate(point[0], point[1]);
     }
 
-    /**
-     * 这里计算每一个block是否在订单圈内，如果刚好在订单圈的边界上
-     * 那么该block的geometry要与订单圈求交集。
-     * 这个算法太暴力了如果block的个数太多，那么会相当慢。
-     */
-    private void createBlockPolygonHelper() {
-        for (Block[] row : blocks) {
-            for (Block block : row) {
-                Polygon tmp = factory.createPolygon(getCoordinates(block));
-                if (borderGeometry.intersects(tmp)) {
-                    block.setGeometry(borderGeometry.intersection(tmp));
-                }// else 该block不在订单圈内，因此polygon属性为null
-            }
-        }
-    }
-
-    private void createBlockPolygon() {
-//        createBlockPolygonHelper()
-        createBlockPolygonHelper(0, 0, blocks.length - 1, blocks[0].length - 1);
-    }
-
-    /**
-     * 这里通过四分法来计算每一个block的geometry。
-     * 其实之前算法的瓶颈就是每个block都要与border做空间计算，现在优化这一步，
-     * 优化方式就是将所有的block看作一个大的block，和border做空间计算：
-     * 1.如果与border不相交，那么这个大的block中所有小的block都和border不相交；
-     * 2.如果被border包含在内，那么所有小的block都被border包含在内，block的geometry就是自身坐标；
-     * 3.如果与border相交，那么将这个大的block分成四等份，每一份都重复上面的运算。
-     *
-     * @param lbr 左下角的行索引
-     * @param lbc 左下角的列索引
-     * @param rtr 右上角的行索引
-     * @param rtc 右上角的列索引
-     */
-    private void createBlockPolygonHelper(int lbr, int lbc, int rtr, int rtc) {
-        if (lbr > rtr || lbc > rtc) {
-            return;
-        }
-        //拿到block组的四个角的坐标，组成一个大的geometry，与border做空间运算
-        Block lbBlock = blocks[lbr][lbc];
-        Block ltBlock = blocks[rtr][lbc];
-        Block rtBlock = blocks[rtr][rtc];
-        Block rbBlock = blocks[lbr][rtc];
-        Coordinate[] coordinates = new Coordinate[5];
-        coordinates[0] = getCoordinate(lbBlock.getLbPoint()); //左下角
-        coordinates[1] = getCoordinate(ltBlock.getLtPoint()); //左上角
-        coordinates[2] = getCoordinate(rtBlock.getRtPoint()); //右上角
-        coordinates[3] = getCoordinate(rbBlock.getRbPoint()); //右下角
-        coordinates[4] = coordinates[0]; //左下角
-        Polygon polygon = factory.createPolygon(coordinates);
-        if (borderGeometry.contains(polygon)) { //被包含
-            for (int i = lbr; i <= rtr; i++) {
-                for (int j = lbc; j <= rtc; j++) {
-                    blocks[i][j].setGeometry(factory.createPolygon(getCoordinates(blocks[i][j])));
-                }
-            }
-        } else if (borderGeometry.intersects(polygon)) { //相交
-            if (lbr == rtr && lbc == rtc) { //如果该block组只有一个block
-                blocks[lbr][lbc].setGeometry(factory.createPolygon(getCoordinates(blocks[lbr][lbc])));
-            } else { //有多个，需要四分
-                int mr = (lbr + rtr) / 2, mc = (lbc + rtc) / 2;
-                createBlockPolygonHelper(lbr, lbc, mr, mc); //左下部分
-                createBlockPolygonHelper(mr + 1, lbc, rtr, mc); //左上部分
-                createBlockPolygonHelper(lbr, mc + 1, mr, rtc); //右下部分
-                createBlockPolygonHelper(mr + 1, mc + 1, rtr, rtc); //右上部分
-            }
-        } //else 不相交，那么所有的block均为null即可
-    }
-
     private void mergeSmallGroup() {
         List<GroupBlock> smallGroup = new ArrayList<>();
         List<GroupBlock> bigGroup = new ArrayList<>();
@@ -468,20 +485,6 @@ public class SplitOrderCircle {
         groupBlocks = bigGroup;
     }
 
-    private void checkBlockGeometry() {
-        for (int i = 0; i < blocks.length; i++) {
-            for (int j = 0; j < blocks[0].length; j++) {
-                // 不能出现中空现象,当前限制考虑一个空格
-                if (blocks[i][j].getGeometry() == null
-                        && i > 0 && blocks[i - 1][j].getGeometry() != null
-                        && j > 0 && blocks[i][j - 1].getGeometry() != null
-                        && i < blocks.length - 1 && blocks[i + 1][j].getGeometry() != null
-                        && j < blocks[0].length - 1 && blocks[i][j + 1].getGeometry() != null) {
-                    blocks[i][j].setGeometry(factory.createPolygon(getCoordinates(blocks[i][j])));
-                }
-            }
-        }
-    }
 
     private List<String[]> convert2Wkt() {
         List<String[]> res = new ArrayList<>();
