@@ -1,6 +1,8 @@
 package com.syn.learning.work.grouptips;
 
 import com.syn.learning.work.grouptips.model.Tip;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -16,31 +18,38 @@ import java.util.Map;
 public class Main {
 
     private static Map<String, String> borderMap = new HashMap<>();
+    private static Logger logger = LoggerFactory.getLogger(SplitOrderCircle.class);
+
 
     public static void main(String[] args) throws Exception {
         String borderPath = "C:\\work\\工单分组\\实验数据\\admin_border.txt";
         String tipsDir = "C:\\work\\工单分组\\实验数据\\tips\\";
         String resDir = "C:\\work\\工单分组\\实验数据\\结果\\";
         getBorders(borderPath);
-        SplitOrderCircle splitOrderCircle = new SplitOrderCircle(0.00025, 1200, 800);
+        double size = 0.0005;
+        SplitOrderCircle splitOrderCircle = new SplitOrderCircle(size, 1200, 800);
         File[] files = new File(tipsDir).listFiles();
         List<String[]> all = new ArrayList<>();
-        long s = 0;
+        long s = System.currentTimeMillis();
+        logger.info("********************************网格精度为{}时***************************************", size);
         for (File file : files) {
             String name = file.getName();
             if (file.isFile() && name.endsWith("cluster.txt")) {
                 List<Tip> tips = getTips(file);
                 String region = name.substring(0, name.indexOf("_"));
+                logger.info(region);
                 String border = borderMap.get(region);
                 long l = System.currentTimeMillis();
                 List<String[]> res = splitOrderCircle.split(tips, border);
-                long t = System.currentTimeMillis() - l;
-                System.out.println(region + "\t耗时：" + t + " ms\t总耗时：" + (s += t) + " ms");
+                logger.info("------------{}耗时：{}---------------", region, (System.currentTimeMillis() - l));
+                logger.info(" ");
                 saveData(resDir + region + ".txt", res);
                 all.addAll(res);
                 res.clear();
             }
         }
+        logger.info("********************************总耗时：{}***************************************\n",
+                (System.currentTimeMillis() - s));
         saveData(resDir + "all.txt", all);
     }
 

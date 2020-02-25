@@ -9,6 +9,8 @@ import com.vividsolutions.jts.geom.*;
 import com.vividsolutions.jts.io.ParseException;
 import com.vividsolutions.jts.io.WKTReader;
 import com.vividsolutions.jts.io.WKTWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
@@ -32,6 +34,8 @@ public class SplitOrderCircle {
     private double blockSize;
     private int maxTipsSize;
     private int minTipsSize;
+    private int calculateCount;
+    private static Logger logger = LoggerFactory.getLogger(SplitOrderCircle.class);
 
     public SplitOrderCircle(double blockSize, int maxTipsSize, int minTipsSize) {
         this.blockSize = blockSize;
@@ -52,22 +56,39 @@ public class SplitOrderCircle {
             res.add(new String[]{"0", "" + tips.size(), borderWkt});
             return res;
         }
+        calculateCount = 0;
+        long l = System.currentTimeMillis();
+
         //加载数据
         load(tips, borderWkt);
+
         //根据border生成所有的block
         generateBlocks();
+        logger.info("生成block耗时：{}", (System.currentTimeMillis() - l));
+
         //计算每一个block的geometry
+        l = System.currentTimeMillis();
         createBlockPolygon();
+        logger.info("计算block的geometry耗时：{}", (System.currentTimeMillis() - l));
+        logger.info("block总个数：{}, 空间计算次数：{}", blocks.length * blocks[0].length, calculateCount);
+
         //计算每一个tip落在哪个block中
         allocateTips();
+
         //checkBlockGeometry
         checkBlockGeometry();
+
         //合并block，合并后得到若干个groupBlock
+        l = System.currentTimeMillis();
         mergeBlock();
+        logger.info("合并block：{}", (System.currentTimeMillis() - l));
+
         //将tips不足阈值的group合并到与之相邻的大的group中
         mergeSmallGroup();
+
         //输出wkt格式
         res = convert2Wkt();
+
         // release
         release();
         return res;
@@ -86,14 +107,6 @@ public class SplitOrderCircle {
         for (Coordinate c : coordinates) {
             this.adminBorder.add(new double[]{c.x, c.y});
         }
-    }
-
-    private void release() {
-        groupBlocks.clear();
-        blocks = null;
-        borderGeometry = null;
-        adminBorder.clear();
-        tips.clear();
     }
 
     /**
@@ -141,29 +154,14 @@ public class SplitOrderCircle {
         return corners;
     }
 
-
-    /**
-     * 这里计算每一个block是否在订单圈内，如果刚好在订单圈的边界上
-     * 那么该block的geometry要与订单圈求交集。
-     * 这个算法太暴力了如果block的个数太多，那么会相当慢。
-     */
-    private void createBlockPolygonHelper() {
-        for (Block[] row : blocks) {
-            for (Block block : row) {
-                Polygon tmp = factory.createPolygon(getCoordinates(block));
-                if (borderGeometry.intersects(tmp)) {
-                    block.setValid(true);
-                }// else 该block不在订单圈内，因此polygon属性为null
-            }
-        }
-    }
-
     private void createBlockPolygon() {
-//        createBlockPolygonHelper()
         createBlockPolygonHelper(0, 0, blocks.length - 1, blocks[0].length - 1);
     }
 
     /**
+     * 这里计算每一个block是否在订单圈内，如果刚好在订单圈的边界上
+     * 那么该block的geometry要与订单圈求交集。
+     * 这个算法太暴力了，如果block的个数太多，那么会相当慢。
      * 这里通过四分法来计算每一个block的geometry。
      * 其实之前算法的瓶颈就是每个block都要与border做空间计算，现在优化这一步，
      * 优化方式就是将所有的block看作一个大的block，和border做空间计算：
@@ -180,6 +178,7 @@ public class SplitOrderCircle {
         if (lbr > rtr || lbc > rtc) {
             return;
         }
+        calculateCount++;
         //拿到block组的四个角的坐标，组成一个大的geometry，与border做空间运算
         Block lbBlock = blocks[lbr][lbc];
         Block ltBlock = blocks[rtr][lbc];
@@ -210,7 +209,6 @@ public class SplitOrderCircle {
             }
         } //else 不相交，那么所有的block均为null即可
     }
-
 
     private void allocateTips() {
         for (Tip tip : tips) {
@@ -328,7 +326,7 @@ public class SplitOrderCircle {
                 }
             }
         }
-        groupBlock.setGeometry(createGroupGeometry2(groupBlock));
+        groupBlock.setGeometry(createGroupGeometry(groupBlock));
         groupBlocks.add(groupBlock);
     }
 
@@ -345,45 +343,17 @@ public class SplitOrderCircle {
     }
 
     /**
-     * 这里是把group中所有的block的geometry进行合并，合并为一个大的多边形
-     * 这个很耗时，因为要做n次空间运算
-     *
-     * @param groupBlock 一个group
-     * @return 这个group的最终的geometry
-     */
-    private Geometry createGroupGeometry(GroupBlock groupBlock) {
-//        List<Block> blocks = groupBlock.getBlocks();
-//        Geometry geometry = blocks.get(0).getGeometry();
-//        for (int i = 1; i < blocks.size(); i++) {
-//            geometry = geometry.union(blocks.get(i).getGeometry());
-//        }
-//        return geometry;
-        return null;
-    }
-
-    /**
+     * 把group中所有的block的geometry进行合并，合并为一个大的多边形，很耗时，因为要做n次空间运算
      * 这里给出一个优化过的合并block.geometry的算法
      *
      * @param groupBlock group
      * @return geometry
      */
-    private Geometry createGroupGeometry2(GroupBlock groupBlock) {
+    private Geometry createGroupGeometry(GroupBlock groupBlock) {
         //key：edge；value：该edge的数量
-        Map<Edge, Integer> edges = new HashMap<>();
-        //key：点的坐标；val：该点所属的个数为1的edge
+        Map<Edge, Integer> edges = getEdgeFromGroupBlock(groupBlock);
+        //key：点的坐标hashCode；val：该点所属的个数为1的edge
         Map<Integer, List<Edge>> pointEdges = new HashMap<>();
-        int id = 0;
-        for (Block block : groupBlock.getBlocks()) {
-            // 一个block有4条边
-            Edge edge1 = new Edge(id++, block.getLbPoint(), block.getLtPoint(), true); //左边
-            Edge edge2 = new Edge(id++, block.getRtPoint(), block.getLtPoint(), false); //上边
-            Edge edge3 = new Edge(id++, block.getRbPoint(), block.getRtPoint(), true); //右边
-            Edge edge4 = new Edge(id++, block.getRbPoint(), block.getLbPoint(), false); //下边
-            edges.put(edge1, edges.getOrDefault(edge1, 0) + 1);
-            edges.put(edge2, edges.getOrDefault(edge2, 0) + 1);
-            edges.put(edge3, edges.getOrDefault(edge3, 0) + 1);
-            edges.put(edge4, edges.getOrDefault(edge4, 0) + 1);
-        }
         double[] curPoint;
         Edge curEdge = null;
         // 所有只出现了一次的edge，就是最终多边形的envelope的一部分。现在要做的就是将这些边组成一个多边形。
@@ -427,6 +397,7 @@ public class SplitOrderCircle {
             curEdge = nextEdge;
             curPoint = nextPoint;
         }
+        return getPolygonFromPoints(polygonPoints).intersection(borderGeometry);
 //        Geometry res = null;
 //        try {
 //            res = getPolygonFromPoints(polygonPoints).intersection(borderGeometry);
@@ -435,7 +406,23 @@ public class SplitOrderCircle {
 //            String s = wktWriter.write(getPolygonFromPoints(polygonPoints));
 //            e.printStackTrace();
 //        }
-        return getPolygonFromPoints(polygonPoints).intersection(borderGeometry);
+    }
+
+    private Map<Edge, Integer> getEdgeFromGroupBlock(GroupBlock groupBlock) {
+        int id = 0;
+        Map<Edge, Integer> edges = new HashMap<>();
+        for (Block block : groupBlock.getBlocks()) {
+            // 一个block有4条边
+            Edge edge1 = new Edge(id++, block.getLbPoint(), block.getLtPoint(), true); //左边
+            Edge edge2 = new Edge(id++, block.getRtPoint(), block.getLtPoint(), false); //上边
+            Edge edge3 = new Edge(id++, block.getRbPoint(), block.getRtPoint(), true); //右边
+            Edge edge4 = new Edge(id++, block.getRbPoint(), block.getLbPoint(), false); //下边
+            edges.put(edge1, edges.getOrDefault(edge1, 0) + 1);
+            edges.put(edge2, edges.getOrDefault(edge2, 0) + 1);
+            edges.put(edge3, edges.getOrDefault(edge3, 0) + 1);
+            edges.put(edge4, edges.getOrDefault(edge4, 0) + 1);
+        }
+        return edges;
     }
 
     private Polygon getPolygonFromPoints(List<double[]> points) {
@@ -445,16 +432,6 @@ public class SplitOrderCircle {
         }
         coordinates[points.size()] = coordinates[0];
         return factory.createPolygon(coordinates);
-    }
-
-    private Coordinate[] getCoordinates(Block block) {
-        Coordinate[] coordinates = new Coordinate[5];
-        coordinates[0] = getCoordinate(block.getLbPoint());
-        coordinates[1] = getCoordinate(block.getLtPoint());
-        coordinates[2] = getCoordinate(block.getRtPoint());
-        coordinates[3] = getCoordinate(block.getRbPoint());
-        coordinates[4] = coordinates[0];
-        return coordinates;
     }
 
     private Coordinate getCoordinate(double[] point) {
@@ -485,7 +462,6 @@ public class SplitOrderCircle {
         groupBlocks = bigGroup;
     }
 
-
     private List<String[]> convert2Wkt() {
         List<String[]> res = new ArrayList<>();
         for (GroupBlock gb : groupBlocks) {
@@ -496,5 +472,13 @@ public class SplitOrderCircle {
             res.add(ss);
         }
         return res;
+    }
+
+    private void release() {
+        groupBlocks.clear();
+        blocks = null;
+        borderGeometry = null;
+        adminBorder.clear();
+        tips.clear();
     }
 }
