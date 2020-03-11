@@ -26,7 +26,7 @@ public class Main {
         String tipsDir = "C:\\work\\工单分组\\实验数据\\tips\\";
         String resDir = "C:\\work\\工单分组\\实验数据\\结果\\";
         getBorders(borderPath);
-        double size = 0.0005;
+        double size = 0.002;
         SplitOrderCircle splitOrderCircle = new SplitOrderCircle(size, 1200, 800);
         File[] files = new File(tipsDir).listFiles();
         List<String[]> all = new ArrayList<>();

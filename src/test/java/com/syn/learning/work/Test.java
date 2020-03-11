@@ -9,4 +9,10 @@ public class Test {
     public static void test(){
         System.out.println("test");
     }
+
+    protected static void test2(){
+
+    }
+
+    static void test3(){}
 }

@@ -75,11 +75,15 @@ public class Sorts {
             while (j > i && arr[j] > base) {
                 j--;
             }
-            if (j > i) arr[i++] = arr[j];
+            if (j > i) {
+                arr[i++] = arr[j];
+            }
             while (i < j && arr[i] < base) {
                 i++;
             }
-            if (i < j) arr[j--] = arr[i];
+            if (i < j) {
+                arr[j--] = arr[i];
+            }
         }
         arr[i] = base;
         quickSortHelper(arr, left, i - 1);

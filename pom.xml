@@ -13,7 +13,6 @@
         <module>springmvc-demo</module>
         <module>springmvc-demo2</module>
         <module>s3-demo</module>
-        <module>kafka-demo</module>
     </modules>
     <properties>
         <spring.version>5.1.6.RELEASE</spring.version>
@@ -50,11 +49,20 @@
             <version>3.4.6</version>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/log4j/log4j -->
         <dependency>
-            <groupId>log4j</groupId>
-            <artifactId>log4j</artifactId>
-            <version>1.2.17</version>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.5</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+            <version>1.0.11</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.0.11</version>
         </dependency>
 
         <dependency>

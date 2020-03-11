@@ -191,13 +191,14 @@ public class SplitOrderCircle {
         coordinates[3] = getCoordinate(rbBlock.getRbPoint()); //右下角
         coordinates[4] = coordinates[0]; //左下角
         Polygon polygon = factory.createPolygon(coordinates);
-        if (borderGeometry.contains(polygon)) { //被包含
+        IntersectionMatrix relate = borderGeometry.relate(polygon);
+        if (relate.isContains()) { //被包含
             for (int i = lbr; i <= rtr; i++) {
                 for (int j = lbc; j <= rtc; j++) {
                     blocks[i][j].setValid(true);
                 }
             }
-        } else if (borderGeometry.intersects(polygon)) { //相交
+        } else if (relate.isIntersects()) { //相交
             if (lbr == rtr && lbc == rtc) { //如果该block组只有一个block
                 blocks[lbr][lbc].setValid(true);
             } else { //有多个，需要四分
@@ -285,6 +286,24 @@ public class SplitOrderCircle {
                 searchBlock(start, visited, ds, groupId++);
             }
         }
+    }
+
+    private Geometry createGroupGeometry2(GroupBlock groupBlock) {
+        List<Block> blocks = groupBlock.getBlocks();
+        Geometry geometry = getGeometryFromBlock(blocks.get(0));
+        for (int i = 1; i < blocks.size(); i++) {
+            geometry = geometry.union(getGeometryFromBlock(blocks.get(i)));
+        }
+        return geometry.intersection(borderGeometry);
+    }
+
+    private Geometry getGeometryFromBlock(Block block) {
+        List<double[]> points = new ArrayList<>();
+        points.add(block.getLbPoint());
+        points.add(block.getLtPoint());
+        points.add(block.getRtPoint());
+        points.add(block.getRbPoint());
+        return getPolygonFromPoints(points);
     }
 
     private void searchBlock(Block start, Set<Integer> visited, int[][] ds, int groupId) {
